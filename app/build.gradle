@@ -17,6 +17,15 @@ android {
         }
     }
 
+    packaging {
+        jniLibs {
+            // Keep the EZVIZ SDK's native libraries compressed in the APK.
+            // With minSdk 23 AGP stores them uncompressed by default, which
+            // more than doubles the download size.
+            useLegacyPackaging true
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
