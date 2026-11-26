@@ -54,9 +54,14 @@ On Windows, double-click `web/Start Liza.bat`. See the [Liza web README](web/REA
 
 ## Download
 
-Get the latest APK from the [**Releases**](../../releases) page and see the [user guide](docs/USER_GUIDE.md#install-the-apk) for install steps.
+| Version | Download |
+|---|---|
+| **Android** | [Liza 0.3.0](https://github.com/titaniumgui/Liza/releases/tag/v0.3.0): `Liza-0.3.0-debug.apk`. See the [user guide](docs/USER_GUIDE.md#install-the-apk) for install steps. |
+| **Computer (web)** | [Liza web 1.0.0](https://github.com/titaniumgui/Liza/releases/tag/web-v1.0.0): `Liza-web-1.0.0.zip`. See the [Liza web README](web/README.md). |
 
-Requirements: an ARM Android phone running Android 6.0 or newer, an EZVIZ account, and your own [EZVIZ Open Platform](https://open.ezviz.com) **AppKey**.
+All versions are on the [**Releases**](../../releases) page.
+
+Requirements for Android: an ARM phone running Android 6.0 or newer, an EZVIZ account, and your own [EZVIZ Open Platform](https://open.ezviz.com) **AppKey**.
 
 ## Quick start
 

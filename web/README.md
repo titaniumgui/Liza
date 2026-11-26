@@ -30,7 +30,9 @@ The computer version of Liza: a fast, private web app for your EZVIZ camera. It 
 
 ## Quick start
 
-**Windows:** double-click **`Start Liza.bat`**.
+Download **Liza-web-1.0.0.zip** from the [Liza web release](https://github.com/titaniumgui/Liza/releases/tag/web-v1.0.0) and unzip it, or clone this repository.
+
+**Windows:** double-click **`Start Liza.bat`** in the `web` folder.
 
 **Any system:**
 
