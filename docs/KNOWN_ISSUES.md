@@ -39,3 +39,14 @@ Alerts are visible only by opening **Recent motion alerts**. The public EZVIZ SD
 - `okhttp 3.12.1` and `gson 2.8.5` are old versions pinned to match the EZVIZ SDK. Check before upgrading.
 - There is no release build type, signing config or R8 shrinking. The published APK is a debug build.
 - There is a `gradlew.bat` but no `gradlew` shell script for macOS and Linux.
+
+## Liza web
+
+| Area | Issue or limitation |
+|---|---|
+| Sign-in without AppSecret | EZVIZ rejects any return address but its own (error 1016), so you paste back the success-page address by hand. The session lasts about a week. |
+| AppSecret | Reaches only cameras on the EZVIZ account that created the AppKey. |
+| Times | EZVIZ's web API reports SD and alert times as camera wall-clock time written as UTC. Liza converts with the computer's time zone, which is assumed to match the camera's. |
+| SD playback | EZVIZ's player asks for a whole local day of clips, which its server rejects outside UTC. Liza narrows that request (in `web/public/app.js`), which depends on the player's internal request path and may need updating with a new EZUIKit version. |
+| Thumbnails | Frames grabbed from clips without an alert snapshot wake battery cameras, take a few seconds each, and are cached per browser. |
+| Testing | Tested in a Chromium-based browser on Windows with a DP2C (Europe). Two-way talk, arm/disarm, rename and flip haven't been exercised against a camera yet. |

@@ -233,3 +233,17 @@ sequenceDiagram
 - Each activity has its own small helpers: `text()`, `button()`, `rounded()`, `top()` and `dp()`.
 - **Insets**: on Android 11+ each screen pads its root `ScrollView` by the system-bar and IME insets.
 - **Orientation**: every activity is portrait-locked. Only `LiveActivity` full screen switches to landscape, and it handles `orientation|screenSize` changes itself.
+
+## Liza web
+
+A separate front-end in `web/` with no build step:
+
+```
+browser (public/index.html + app.js)  ──HTTP──▶  server.py on 127.0.0.1:8790  ──HTTPS──▶  EZVIZ Open API (regional)
+        │                                                                                  ▲
+        └── EZUIKit player (vendor/, from npm) ── video over WebSocket ───────────────────┘
+```
+
+- **`server.py`** (Python standard library only) handles the first-run config (`/api/config`), the session (`/api/session`), and sign-in. Sign-in uses either AppKey + AppSecret (`/api/lapp/token/get` on the region's server) or EZVIZ's OAuth page with the pasted-back address (`/auth/start`, `/auth/paste`). It forwards a fixed set of Open API calls (`/api/ezviz/<name>`), including v3 GET calls with header auth, and serves `public/` and `vendor/`.
+- **`app.js`** holds the UI state, quality levels (from the player's `videoLevelList`), Liza's own CSS zoom and pan, full screen with a window-filling fallback, the stall guard, SD search and playback, alert playback, and the thumbnail pipeline (alert snapshot, cache, or hidden-player frame grab with `capturePicture(name, false, false)`).
+- **Live URLs**: `ezopen://open.ezviz.com/<serial>/1[.hd].live`. **Playback**: `…/1.rec?begin=YYYYMMDDHHmmss&end=…`, with times as camera wall-clock time.

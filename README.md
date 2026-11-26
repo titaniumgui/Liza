@@ -38,6 +38,20 @@ Liza is a lightweight native Android app for fast access to EZVIZ cameras. It wa
 
 Camera video, thumbnails, the AppKey and device serial numbers are blurred for privacy.
 
+## Liza web (for your computer)
+
+The [`web/`](web/) folder has a computer version of Liza. It runs locally at `http://localhost:8790` with a small Python server and EZVIZ's official web player. It offers live video in SD/HD/FHD, zoom, full screen, two-way talk, snapshots, MP4 recording, SD card playback with thumbnails, motion alerts and device settings.
+
+<p align="center"><img src="docs/screenshots/web-01-live.png" width="640" alt="Liza web live view"></p>
+
+```bash
+cd web
+python get_player.py   # one time: downloads EZVIZ's web player
+python server.py       # open http://localhost:8790
+```
+
+On Windows, double-click `web/Start Liza.bat`. See the [Liza web README](web/README.md) for setup, the AppSecret option and privacy details.
+
 ## Download
 
 Get the latest APK from the [**Releases**](../../releases) page and see the [user guide](docs/USER_GUIDE.md#install-the-apk) for install steps.
@@ -56,6 +70,7 @@ Requirements: an ARM Android phone running Android 6.0 or newer, an EZVIZ accoun
 | Document | What's inside |
 |---|---|
 | [User guide](docs/USER_GUIDE.md) | Setup, every screen and button, file locations, troubleshooting |
+| [Liza web](web/README.md) | The computer version: setup, AppSecret vs sign-in, privacy, workarounds |
 | [Architecture](docs/ARCHITECTURE.md) | Code structure, components, flows, data storage, SDK calls used |
 | [Building](docs/BUILDING.md) | Toolchain, build and install commands, release signing notes |
 | [Security & privacy](docs/SECURITY_PRIVACY.md) | What is stored and how, permissions, network behaviour |
@@ -71,7 +86,7 @@ You need JDK 17–21 (with `JAVA_HOME` set) and Android SDK Platform 35. The out
 
 ## Project status
 
-Version **0.3.0**. Live view, talk, recording, SD playback, alerts and device settings are implemented. Push notifications for alerts are **not** implemented, and alert-to-recording matching has not yet been validated against a real DP2C. See [Known issues](docs/KNOWN_ISSUES.md).
+Version **0.3.0**. Live view, talk, recording, SD playback, alerts and device settings are implemented. Push notifications for alerts are **not** implemented. A computer version, [Liza web](web/README.md), is included and tested with a DP2C. See [Known issues](docs/KNOWN_ISSUES.md).
 
 ## License
 

@@ -12,3 +12,10 @@ app/build/
 captures/
 .kotlin/
 .DS_Store
+
+# Liza web: local secrets, session and downloaded player
+web/config.json
+web/session.json
+web/vendor/
+web/**/__pycache__/
+*.tmp

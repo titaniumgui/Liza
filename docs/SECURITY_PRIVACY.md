@@ -47,3 +47,17 @@ Before pushing the repository, confirm that none of these are committed (all are
 - `.idea/` and `build/` folders
 
 There is no AppKey or token anywhere in the source; each user enters their own at runtime.
+
+## Liza web
+
+| Data | Where | Protection |
+|---|---|---|
+| AppKey, AppSecret, region | `web/config.json` | Local file, git-ignored. The page never receives the AppSecret back. |
+| EZVIZ access token | `web/session.json` | Local file, git-ignored. Deleted on sign-out. |
+| SD clip thumbnails, UI preferences | Browser local storage | Per browser, on this computer |
+| Snapshots and recordings | Your browser's download folder | Saved only when you click Snapshot or Record |
+
+- The server listens on `127.0.0.1` only. It refuses requests whose `Host` isn't `localhost`/`127.0.0.1` (DNS rebinding), and POSTs whose `Origin` is another website.
+- It forwards only a fixed list of EZVIZ API calls (`ALLOWED` in `web/server.py`), and never logs the sign-in address, which carries the token.
+- With the sign-in option, your password is typed only on EZVIZ's own page.
+- `web/get_player.py` downloads EZVIZ's player from npm and installs it only if its SHA-512 checksum matches the pinned release.

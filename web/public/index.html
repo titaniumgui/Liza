@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liza</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%230C1119'/%3E%3Cpath fill='none' stroke='%2339C5A0' stroke-width='2.8' d='M6 14v20h7M17 14v20M21 14h8l-8 20h8M32 34l4.5-20L41 34M33.5 28h6'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<!-- First-run setup -->
+<section id="setup" class="signin" hidden>
+  <div class="signin-card">
+    <div class="brand">LIZA</div>
+    <h1>Connect to EZVIZ</h1>
+    <p class="muted">Paste the keys from your EZVIZ Open Platform console. They're saved only on this computer, in <code>web/config.json</code>.</p>
+    <form id="setupForm" class="form" autocomplete="off">
+      <label>AppKey
+        <input name="appKey" required spellcheck="false" placeholder="32-character AppKey">
+      </label>
+      <label>AppSecret <span class="muted small">(optional, recommended)</span>
+        <input name="appSecret" type="password" spellcheck="false" placeholder="Leave empty to sign in with your EZVIZ account instead">
+      </label>
+      <label>Region
+        <select name="region" class="btn"></select>
+      </label>
+      <p class="muted small">With an AppSecret, Liza connects automatically and renews access by itself. It only reaches cameras on the EZVIZ account that created the AppKey. Without one, you sign in on EZVIZ's page and paste back the address it shows.</p>
+      <button class="btn accent" type="submit">Save and connect</button>
+      <span class="small form-msg"></span>
+    </form>
+  </div>
+</section>
+
+<!-- Sign-in -->
+<section id="signin" class="signin" hidden>
+  <div class="signin-card">
+    <div class="brand">LIZA</div>
+    <h1>Front door</h1>
+    <p class="muted">A quicker way to see and answer your door</p>
+    <p class="small"><button id="openSetup" class="linkish" type="button">Change AppKey, AppSecret or region</button></p>
+    <ol class="steps">
+      <li>
+        <a class="btn accent" href="/auth/start" target="_blank" rel="noopener">Sign in with EZVIZ</a>
+        <span class="muted small">Opens EZVIZ's own sign-in page in a new tab. Liza never sees your password.</span>
+      </li>
+      <li>
+        <span>When EZVIZ shows its success page, copy the full address from the address bar and paste it here.</span>
+        <input id="pasteUrl" type="url" autocomplete="off" spellcheck="false" placeholder="https://…/oauth/success?access_token=…">
+        <button id="pasteBtn" class="btn">Finish sign-in</button>
+        <span id="pasteMsg" class="small"></span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- App -->
+<div id="app" class="app" hidden>
+  <aside class="side">
+    <div class="side-head">
+      <div class="brand">LIZA</div>
+      <button id="refreshDevices" class="icon-btn" title="Refresh devices" aria-label="Refresh devices">⟳</button>
+    </div>
+    <h2 class="side-title">Your devices</h2>
+    <div id="devices" class="devices"></div>
+    <nav class="tabs" aria-label="Sections">
+      <button data-tab="live" class="tab active">Live view</button>
+      <button data-tab="recordings" class="tab">SD card recordings</button>
+      <button data-tab="alerts" class="tab">Motion alerts</button>
+      <button data-tab="settings" class="tab">Device settings</button>
+      <button data-tab="about" class="tab">About</button>
+    </nav>
+    <div class="side-foot small muted" id="sessionInfo"></div>
+  </aside>
+
+  <main class="main">
+    <header class="main-head">
+      <div>
+        <h1 id="deviceTitle">Front door</h1>
+        <p id="status" class="muted">Loading…</p>
+      </div>
+    </header>
+
+    <!-- Player (shared by live, recordings and alerts) -->
+    <div id="playerWrap" class="player-wrap">
+      <div id="zoomLayer" class="zoom-layer"><div id="player" class="player"></div></div>
+      <div id="playerIdle" class="player-idle">Select a device to start</div>
+      <div class="overlay" id="overlay">
+        <div class="ov-group">
+          <button id="zoomOut" class="ov-btn" title="Zoom out" aria-label="Zoom out">−</button>
+          <span id="zoomLevel" class="ov-label">1×</span>
+          <button id="zoomIn" class="ov-btn" title="Zoom in" aria-label="Zoom in">+</button>
+        </div>
+        <button id="fsBtn" class="ov-btn wide" title="Full screen (F)">⛶ Full screen</button>
+      </div>
+    </div>
+
+    <div id="liveBar" class="bar">
+      <button id="playBtn" class="btn">Pause video</button>
+      <select id="quality" class="btn" aria-label="Video quality">
+        <option value="2" selected>HD</option>
+      </select>
+      <button id="soundBtn" class="btn">Sound off</button>
+      <button id="talkBtn" class="btn">Talk</button>
+      <button id="snapBtn" class="btn">Snapshot</button>
+      <button id="recBtn" class="btn">Record</button>
+      <button id="zoomBtn" class="btn">Zoom</button>
+      <button id="fullBtn" class="btn">Full screen</button>
+    </div>
+
+    <div id="recBar" class="bar" hidden>
+      <button id="backLiveBtn" class="btn accent">Back to live</button>
+      <button id="minus10" class="btn">−10s</button>
+      <span id="osd" class="osd">--:--:--</span>
+      <button id="plus10" class="btn">+10s</button>
+      <button id="recSnapBtn" class="btn">Snapshot</button>
+      <button id="recFullBtn" class="btn">Full screen</button>
+    </div>
+
+    <!-- Panels -->
+    <section data-panel="live" class="panel">
+      <p class="muted small">Recordings download as MP4 and snapshots as JPEG. Scroll on the video to zoom, drag to move around, double-click for full screen.</p>
+    </section>
+
+    <section data-panel="recordings" class="panel" hidden>
+      <div class="row">
+        <input id="recDate" type="date" class="btn">
+        <button id="recSearch" class="btn accent">Search SD card</button>
+        <label class="check"><input id="autoplay" type="checkbox" checked> Autoplay newer recordings</label>
+      </div>
+      <p id="recMsg" class="muted small"></p>
+      <div id="recList" class="list"></div>
+    </section>
+
+    <section data-panel="alerts" class="panel" hidden>
+      <div class="row">
+        <button id="alertsRefresh" class="btn accent">Refresh alerts</button>
+        <span class="muted small">Events from the last 24 hours. Click one to play its SD card recording.</span>
+      </div>
+      <p id="alertsMsg" class="muted small"></p>
+      <div id="alertList" class="grid"></div>
+    </section>
+
+    <section data-panel="settings" class="panel" hidden>
+      <div class="cards">
+        <div class="card card-wide">
+          <h3>EZVIZ connection</h3>
+          <p id="connInfo" class="muted small">—</p>
+          <form id="connForm" class="form" autocomplete="off">
+            <label>AppKey
+              <input name="appKey" required spellcheck="false">
+            </label>
+            <label>AppSecret
+              <input name="appSecret" type="password" spellcheck="false" placeholder="Not set">
+            </label>
+            <label>Region
+              <select name="region" class="btn"></select>
+            </label>
+            <div class="row">
+              <button class="btn accent" type="submit">Save connection</button>
+              <button id="clearSecret" class="btn" type="button">Remove AppSecret</button>
+            </div>
+            <span class="small form-msg"></span>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Device</h3>
+          <p id="setInfo" class="muted small">—</p>
+          <div class="row">
+            <input id="nameInput" class="btn grow" maxlength="50" aria-label="Device name">
+            <button id="renameBtn" class="btn">Rename</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Door alerts</h3>
+          <p id="defenceInfo" class="muted small">—</p>
+          <button id="defenceBtn" class="btn accent">Arm / disarm</button>
+        </div>
+        <div class="card">
+          <h3>Storage</h3>
+          <p id="storageInfo" class="muted small">Not checked yet.</p>
+          <button id="storageBtn" class="btn">Check storage status</button>
+        </div>
+        <div class="card">
+          <h3>Image</h3>
+          <p class="muted small">Sends a 180° flip to the camera. Video may stutter briefly.</p>
+          <button id="flipBtn" class="btn">Flip image 180°</button>
+        </div>
+      </div>
+      <p id="setMsg" class="muted small"></p>
+    </section>
+
+    <section data-panel="about" class="panel" hidden>
+      <div class="card">
+        <h3>Liza web</h3>
+        <p class="muted">Local web version of Liza for your computer. It runs only on this computer at <code>localhost</code>, talks to EZVIZ directly, and keeps your session in <code>web/session.json</code>.</p>
+        <p class="muted small">Video is played by EZVIZ's official web player (EZUIKit). Co-developed with Codex and Claude · Hassan Khallaf.</p>
+        <button id="signOutBtn" class="btn">Sign out</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="/vendor/ezuikit.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
