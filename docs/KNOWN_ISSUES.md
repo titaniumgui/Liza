@@ -1,6 +1,6 @@
 # Known issues and limitations
 
-These findings come from a review of the source at version 0.3.0. They are listed roughly by impact.
+These findings come from a review of the source at version 0.3.0, updated for 0.4.0. They are listed roughly by impact.
 
 ## Missing features
 
@@ -37,7 +37,8 @@ Alerts are visible only by opening **Recent motion alerts**. The public EZVIZ SD
 - `LiveActivity.loadImage()` is never called.
 - The colour constants and view helpers (`text`, `button`, `rounded`, `dp`) are copied into every activity.
 - `okhttp 3.12.1` and `gson 2.8.5` are old versions pinned to match the EZVIZ SDK. Check before upgrading.
-- There is no release build type, signing config or R8 shrinking. The published APK is a debug build.
+- R8 code shrinking is off (the EZVIZ SDK uses reflection and JNI). Releases from 0.4.0 are signed. 0.3.0 was debug-signed, so updating from it needs an uninstall first.
+- The SD card reminder can't read free space (EZVIZ doesn't report it). Until the card has filled once, or you enter how long a full card lasts, it suggests a check after 30 days.
 - There is a `gradlew.bat` but no `gradlew` shell script for macOS and Linux.
 
 ## Liza web

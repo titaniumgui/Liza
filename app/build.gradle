@@ -2,6 +2,16 @@ plugins {
     id 'com.android.application'
 }
 
+// Release signing: point the Gradle property `liza.signing` (for example in
+// ~/.gradle/gradle.properties) at a keystore.properties file with storeFile,
+// storePassword, keyAlias and keyPassword, or put keystore.properties in the
+// project root. Both stay out of git. Without it, release builds are unsigned.
+def signingFile = project.hasProperty('liza.signing')
+        ? file(project.property('liza.signing'))
+        : rootProject.file('keystore.properties')
+def signingProps = new Properties()
+if (signingFile.exists()) signingFile.withInputStream { signingProps.load(it) }
+
 android {
     namespace 'app.liza.android'
     compileSdk 35
@@ -10,10 +20,29 @@ android {
         applicationId 'app.liza.android'
         minSdk 23
         targetSdk 35
-        versionCode 3
-        versionName '0.3.0'
+        versionCode 4
+        versionName '0.4.0'
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+
+    signingConfigs {
+        if (signingProps.storeFile) {
+            release {
+                storeFile file(signingProps.storeFile)
+                storePassword signingProps.storePassword
+                keyAlias signingProps.keyAlias
+                keyPassword signingProps.keyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // No code shrinking: the EZVIZ SDK uses reflection and JNI.
+            minifyEnabled false
+            if (signingProps.storeFile) signingConfig signingConfigs.release
         }
     }
 

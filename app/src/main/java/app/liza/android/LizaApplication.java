@@ -16,6 +16,8 @@ public final class LizaApplication extends Application {
         // Construct the preferences-backed store only after super.onCreate().
         vault = new SecureVault(this);
         configureIfReady();
+        // Re-arm SD card reminders (alarms are lost on app update or force-stop).
+        SdReminder.scheduleAll(this);
     }
 
     synchronized boolean configureIfReady() {

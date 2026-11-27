@@ -31,11 +31,11 @@ You need:
 
 ## Install the APK
 
-1. Download `app-debug.apk` from the repository's **Releases** page.
+1. Download `Liza-0.4.0.apk` from the repository's **Releases** page.
 2. Open it on your phone. Android will ask you to allow installs from your browser or file manager; allow it for that app only.
 3. Tap **Install**.
 
-The release APK is a *debug-signed* build. If you later install a build signed with a different key, uninstall the old one first.
+From 0.4.0 the APK is a signed release build. Versions up to 0.3.0 were debug-signed: Android won't update those to a release build, so **uninstall the old Liza first**. You'll need to enter your AppKey and sign in again.
 
 ## First-time setup
 
@@ -150,6 +150,22 @@ Open with **⚙ Settings** on a device row.
 | **Check storage status** | Reports each storage medium as *Normal*, *Wrong storage medium*, *Unformatted* or *Formatting*. Liza never formats storage. |
 | **Video quality** | Sets the live stream quality on the camera (Fluent, Balanced or HD). |
 | **Flip camera image 180°** | Sends an image-flip command. Video may stutter briefly. |
+
+### SD card reminder
+
+EZVIZ reports the SD card's size but not its free space, and the space a camera uses isn't proportional to how long its clips are. So Liza uses something it can observe instead: **when a card is full, the camera overwrites its oldest recordings.**
+
+| Control | What it does |
+|---|---|
+| **Card emptied on** | The day you emptied or formatted the card. |
+| **A full card lasts about … days** | Optional. If you know from experience (for example 90), Liza plans from it. |
+| **Check the card** | Reads the card size, the last 7 days of recordings, and the oldest recording on the card. If the oldest recording is newer than the day you emptied the card, the card is full and overwriting. Liza then knows how many days a full card holds, saves it, and uses it from then on. Otherwise it suggests a check date: a little before the card should fill, or after 30 days if it doesn't know yet. |
+| **Find oldest recording** | Finds the oldest recording on the card and sets it as the emptied date, if you don't remember it. |
+| **Remind me on** / **Save reminder** | Liza shows a notification at about 9:00 on that day. On Android 13 and newer it asks for notification permission. |
+| **Add to calendar** | Opens your calendar app with the reminder filled in. |
+| **I emptied the card today** | Starts a new period. If the card was full, Liza uses the time since it was last emptied as the card's lifespan. |
+
+Checking the card wakes the camera and reads its SD card a day at a time, so it takes 10–30 seconds.
 
 Battery level, working mode, chime and speaker volume, screen and light settings are **not** available. The public EZVIZ SDK does not expose them for the DP2C; use the official EZVIZ app for those.
 

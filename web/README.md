@@ -16,6 +16,7 @@ The computer version of Liza: a fast, private web app for your EZVIZ camera. It 
 - **SD card recordings** by date, with thumbnails, ±10 s, and autoplay of newer clips
 - **Motion alerts** from the last 24 hours with snapshots; click one to play its recording
 - **Device settings**: rename, arm/disarm, SD card status, 180° image flip
+- **SD card reminder**: detects when the card is full and overwriting, learns how many days a full card lasts, and reminds you before the next one fills (in Liza and as a calendar file)
 - **Stall guard**: if live video stops advancing for 6 seconds, Liza saves any recording in progress and reconnects
 
 | Recordings | Alerts | Settings |
@@ -30,7 +31,7 @@ The computer version of Liza: a fast, private web app for your EZVIZ camera. It 
 
 ## Quick start
 
-Download **Liza-web-1.0.0.zip** from the [Liza web release](https://github.com/titaniumgui/Liza/releases/tag/web-v1.0.0) and unzip it, or clone this repository.
+Download **Liza-web-1.1.0.zip** from the [Liza web release](https://github.com/titaniumgui/Liza/releases/tag/web-v1.1.0) and unzip it, or clone this repository.
 
 **Windows:** double-click **`Start Liza.bat`** in the `web` folder.
 
@@ -89,5 +90,6 @@ Liza checks an AppKey/AppSecret pair with EZVIZ before saving it. You can change
 - **Times.** EZVIZ's web API reports SD card and alert times as the camera's local clock written as if it were UTC. Liza corrects for this using your computer's time zone, which is assumed to match the camera's.
 - **SD playback outside UTC.** EZVIZ's player looks up a whole calendar day of clips, which EZVIZ's server rejects when that day spans two UTC dates (playback error 5402/395402). `app.js` narrows that lookup to the clip being played.
 - **Thumbnails.** EZVIZ gives no cover image for SD clips. Liza uses the matching motion-alert snapshot, or briefly plays the clip in a hidden player to grab a frame, and caches the result in your browser.
+- **SD card reminder.** EZVIZ reports the card's size but not its free space, and recordings have no file size. Clip length × bitrate was about 10× too optimistic on a DP2C: it predicted about 950 days for a 128 GB card that filled in about 90. So Liza checks whether the oldest recording on the card is newer than the day you emptied it. If so, the card is full and overwriting, and the span from that recording to today is how many days a full card holds. Reminders are kept in this browser's storage. Use **Add to calendar** to be reminded when Liza isn't open.
 - **Battery cameras.** Live video and thumbnail grabs wake the camera. Liza stops the stream a minute after you switch to another tab.
 - Tested with an EZVIZ DP2C on the Europe region.

@@ -81,6 +81,12 @@
       </div>
     </header>
 
+    <div id="sdBanner" class="banner" hidden>
+      <span id="sdBannerText"></span>
+      <button id="sdBannerOpen" class="btn accent" type="button">Open reminder</button>
+      <button id="sdBannerDone" class="btn" type="button">I emptied the card</button>
+    </div>
+
     <!-- Player (shared by live, recordings and alerts) -->
     <div id="playerWrap" class="player-wrap">
       <div id="zoomLayer" class="zoom-layer"><div id="player" class="player"></div></div>
@@ -180,6 +186,32 @@
           <h3>Storage</h3>
           <p id="storageInfo" class="muted small">Not checked yet.</p>
           <button id="storageBtn" class="btn">Check storage status</button>
+        </div>
+        <div class="card card-wide" id="sdCard">
+          <h3>SD card reminder</h3>
+          <p class="muted small">EZVIZ reports the card's size but not its free space. When the card is full, the camera overwrites its oldest recordings, so Liza checks for that: if the oldest recording is newer than the day you emptied the card, it's full. Liza then knows how many days a full card holds, and reminds you before the next one fills.</p>
+          <div class="form">
+            <label>Card emptied or formatted on
+              <input id="sdStart" type="date" class="btn">
+            </label>
+            <label>A full card lasts about <span class="muted small">(days, optional: from your experience)</span>
+              <input id="sdLife" type="number" min="1" max="3650" step="1" class="btn" placeholder="For example 90">
+            </label>
+            <div class="row">
+              <button id="sdEstimate" class="btn accent" type="button">Check the card</button>
+              <button id="sdFind" class="btn" type="button">Find oldest recording</button>
+            </div>
+            <div id="sdResult" class="sd-result muted small" hidden></div>
+            <label>Remind me to check the card on
+              <input id="sdCheck" type="date" class="btn">
+            </label>
+            <div class="row">
+              <button id="sdSave" class="btn accent" type="button">Save reminder</button>
+              <button id="sdIcs" class="btn" type="button">Add to calendar (.ics)</button>
+              <button id="sdClear" class="btn" type="button">Remove reminder</button>
+            </div>
+            <span id="sdMsg" class="small form-msg"></span>
+          </div>
         </div>
         <div class="card">
           <h3>Image</h3>

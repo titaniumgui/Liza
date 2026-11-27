@@ -33,7 +33,8 @@ Liza/
 │       │   ├── MainActivity.java             Home: setup, sign-in, device list
 │       │   ├── LiveActivity.java             Live view, talk, record, SD playback
 │       │   ├── AlertsActivity.java           Last-24-hours alarm list
-│       │   ├── DeviceSettingsActivity.java   Rename, arm/disarm, storage, image
+│       │   ├── DeviceSettingsActivity.java   Rename, arm/disarm, storage, SD reminder, image
+│       │   ├── SdReminder.java               SD reminder storage, alarm and notification
 │       │   ├── AboutActivity.java            Version and credits
 │       │   └── AlarmNotificationJobService.java  Empty placeholder
 │       └── res/
@@ -50,12 +51,12 @@ Source size: about 2,900 lines of Java, more than half of it in `LiveActivity`.
 | Setting | Value |
 |---|---|
 | `applicationId` / `namespace` | `app.liza.android` |
-| `versionName` / `versionCode` | `0.3.0` / `3` |
+| `versionName` / `versionCode` | `0.4.0` / `4` |
 | `compileSdk` / `targetSdk` | 35 |
 | `minSdk` | 23 (Android 6.0, required by the Keystore AES key in `SecureVault`) |
 | Java | Source and target 17 |
 | ABIs | `armeabi-v7a`, `arm64-v8a` |
-| Build types | Only the default `debug` build has been used; there is no release signing or code shrinking config |
+| Build types | `debug`, and `release` signed from a keystore outside the repository (see [Building](BUILDING.md#release-builds)). No code shrinking: the EZVIZ SDK uses reflection and JNI |
 
 Dependencies:
 
@@ -65,7 +66,7 @@ Dependencies:
 | `com.squareup.okhttp3:okhttp` | 3.12.1 | Required by the EZVIZ SDK |
 | `com.google.code.gson:gson` | 2.8.5 | Required by the EZVIZ SDK |
 
-The native libraries in the EZVIZ SDK are why the debug APK is about 51 MB.
+The native libraries in the EZVIZ SDK are why the APK is about 48–51 MB.
 
 ## Components
 
@@ -138,6 +139,9 @@ Calls `getAlarmList(null, 0, 50, now-24h, now)` for all devices. Snapshots load 
 ### `DeviceSettingsActivity`
 Thin wrappers around SDK calls: `getDeviceInfo`, `setDeviceName`, `setDefence` (IPC open or close), `getStorageStatus`, `setVideoLevel` and `controlVideoFlip`. Each runs on a single worker thread and reports into a status line.
 
+### `SdReminder` and the SD card reminder
+EZVIZ reports SD capacity (`GET /api/v3/device/format/status`, called with OkHttp because the SDK's `EZStorageStatus` has no size) but not free space, and SD clips have no file size. Clip length × bitrate was tried and was about 10× too optimistic on a DP2C, so it isn't used. Instead `DeviceSettingsActivity` finds the oldest recording on the card (`searchRecordFileFromDevice`, one day per probe: weekly steps back, then day by day). If it is newer than the day the card was emptied, the card is full and overwriting, and today minus that day is how many days a full card holds. That "life" is saved and drives later check dates (90% of it). `SdReminder` stores the plan, schedules an inexact `AlarmManager` alarm for 9:00 on the check date, posts the notification (`AlarmReceiver`) and reschedules after a reboot (`BootReceiver`). Liza web implements the same logic in `app.js`.
+
 ### `AboutActivity`
 Static screen showing `versionName` from the package manager and credits.
 
@@ -194,6 +198,7 @@ sequenceDiagram
 |---|---|---|---|
 | `SharedPreferences("liza_secure")` | `app_key`, `region`, `access_token`, `verify_<serial>` | Yes (AES-GCM, Keystore) | Credentials and per-camera verification codes |
 | `SharedPreferences("liza_settings")` | `quality_<serial>`, `sd_autoplay_next` | No | UI preferences |
+| `SharedPreferences("liza_sd")` | `start_`, `check_`, `full_`, `life_`, `name_`, `notified_<serial>` | No | SD card reminder plan |
 | `cacheDir/record-thumbnails/*.jpg` | Hash of `serial_start_stop` | No | SD clip thumbnails |
 | `getExternalFilesDir(Pictures|Movies)/Liza/` | `Liza-<ms>.jpg/.mp4` | No | Staging copies before publishing |
 | MediaStore `Pictures/Liza`, `Movies/Liza` | `Liza-<ms>.jpg/.mp4` | No | User-visible snapshots and recordings |

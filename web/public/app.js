@@ -29,6 +29,7 @@ const state = {
   osdTimer: 0,
   thumbs: {},            // clip key -> image URL (data URL or alert snapshot)
   scanId: 0,             // increments to cancel a running preview scan
+  sdEstimate: null,      // last SD card estimate shown
 };
 
 /* ---------- EZVIZ player fix ----------
@@ -223,6 +224,7 @@ function selectDevice(d) {
   const tab = currentTab();
   if (tab === "settings") loadSettings();
   if (tab === "alerts") loadAlerts();
+  loadSdPlan();
   startLive();
 }
 
@@ -835,6 +837,250 @@ $("#flipBtn").addEventListener("click", async () => {
     await api("mirror", { deviceSerial: state.device.deviceSerial, channelNo: 1, command: 2 });
     setMsg("Flip command sent. The image may take a moment to update.");
   } catch (e) { setMsg("Flip failed. " + e.message); }
+});
+
+/* ---------- SD card reminder ----------
+ * EZVIZ reports the SD card's capacity, but not how much of it is used
+ * (recordings come back with fileSize 0), and the space a camera uses is not
+ * proportional to clip length: on a DP2C, clip length × bitrate predicted
+ * about 950 days for a 128 GB card that really filled in about 90. So Liza
+ * plans with what can be observed:
+ *   1. how long a full card lasts, from the user's experience, or measured:
+ *   2. once a card is full the camera overwrites its oldest recordings, so
+ *      if the oldest recording on the card is newer than the day the card
+ *      was emptied, the card is full, and today − oldest recording is the
+ *      number of days a full card holds. Liza saves that as the card's life.
+ * Without either, it suggests a first check after 30 days. */
+const DAY = 86400000;
+const FIRST_CHECK_DAYS = 30;
+const dayMs = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
+const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
+const longDate = (iso) => new Date(dayMs(iso)).toLocaleDateString([], { dateStyle: "medium", timeZone: "UTC" });
+const minutesText = (ms) => { const m = Math.round(ms / 60000); return m >= 120 ? `${(m / 60).toFixed(1)} hours` : `${m} min`; };
+
+/* Recorded time in one day, with overlapping clips merged. */
+function recordedMs(files, from, to) {
+  const spans = files.map((f) => [Math.max(from, f.startTime), Math.min(to, f.endTime)])
+    .filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0]);
+  let total = 0, curA = -1, curB = -1;
+  for (const [a, b] of spans) {
+    if (a > curB) { if (curB > curA) total += curB - curA; curA = a; curB = b; }
+    else curB = Math.max(curB, b);
+  }
+  if (curB > curA) total += curB - curA;
+  return total;
+}
+async function dayRecords(sn, start) {
+  const end = Math.min(wallNow(), start + DAY - 1);
+  return (await api("recordsByTime", { deviceSerial: sn, channelNo: 1, startTime: start, endTime: end, recType: 2 })) || [];
+}
+
+/* The day of the oldest recording still on the card: probe one day a week
+ * going back, stop after three empty weeks, then find the exact day inside
+ * the last week that had recordings. */
+async function findOldestDay(sn, progress) {
+  const today = dayMs(todayInput());
+  let hit = null, misses = 0;
+  for (let back = 0; back <= 400; back += 7) {
+    progress(`Looking for the oldest recording on the card, ${back} days back…`);
+    let n;
+    try { n = (await dayRecords(sn, today - back * DAY)).length; } catch { continue; }
+    if (n > 0) { hit = back; misses = 0; } else if (++misses >= (hit === null ? 5 : 3)) break;
+  }
+  if (hit === null) return null;
+  for (let back = hit + 6; back > hit; back--) {
+    progress(`Narrowing it down, ${back} days back…`);
+    try { if ((await dayRecords(sn, today - back * DAY)).length) return today - back * DAY; } catch { /* skip */ }
+  }
+  return today - hit * DAY;
+}
+
+function sdPlan(sn) { return store.get("sdplan." + sn, null); }
+function saveSdPlan(sn, plan) { if (plan) store.set("sdplan." + sn, plan); else { try { localStorage.removeItem("liza.sdplan." + sn); } catch { /* ignore */ } } }
+function sdLife(sn) { const n = Number(store.get("sdlife." + sn, 0)); return n >= 1 && n <= 3650 ? n : null; }
+function setSdLife(sn, days) { store.set("sdlife." + sn, days ? Math.round(days) : 0); }
+function sdMsg(m) { $("#sdMsg").textContent = m; }
+function sdReset() { $("#sdResult").hidden = true; state.sdEstimate = null; }
+
+function loadSdPlan() {
+  if (!state.device) return;
+  const sn = state.device.deviceSerial;
+  const plan = sdPlan(sn);
+  const today = todayInput();
+  $("#sdStart").max = today;
+  $("#sdStart").value = (plan && plan.start) || today;
+  $("#sdLife").value = sdLife(sn) || "";
+  $("#sdCheck").min = $("#sdStart").value;
+  $("#sdCheck").value = (plan && plan.check) || "";
+  sdReset();
+  sdMsg(plan && plan.check ? `Reminder saved for ${longDate(plan.check)}.` : "");
+  updateSdBanner();
+}
+
+/* Find the oldest recording, decide whether the card is overwriting, and
+ * suggest a check date. */
+async function checkSd() {
+  if (!state.device) return;
+  const sn = state.device.deviceSerial;
+  const start = $("#sdStart").value;
+  if (!start) { sdMsg("Choose the date the card was emptied."); return; }
+  const btn = $("#sdEstimate");
+  btn.disabled = true;
+  sdReset();
+  try {
+    sdMsg("Reading the card…");
+    const st = await api("storageStatus", { deviceSerial: sn });
+    const cards = ((st && st.storageStatus) || []).filter((c) => Number(c.capacity) > 0);
+    if (!cards.length) { sdMsg("The camera didn't report an SD card. Check that a card is inserted, then try again."); return; }
+    const capGb = cards.reduce((n, c) => n + Number(c.capacity), 0) / 1024; // capacity is in MB
+
+    const today = dayMs(todayInput());
+    const startMs = dayMs(start);
+    const oldest = await findOldestDay(sn, sdMsg);
+
+    sdMsg("Reading the last 7 days of recordings…");
+    let recMs = 0, clips = 0, days = 0;
+    for (let i = 1; i <= 7; i++) {
+      const from = today - i * DAY;
+      try { const f = await dayRecords(sn, from); recMs += recordedMs(f, from, from + DAY); clips += f.length; days += 1; }
+      catch { /* skip a day the camera didn't answer */ }
+    }
+
+    const lines = [`Card size: <strong>${capGb.toFixed(capGb >= 10 ? 0 : 1)} GB</strong>, status ${cards.every((c) => String(c.status) === "0") ? "normal" : "not normal: check it in Device settings"}.`];
+    if (days) lines.push(`Recorded: about ${minutesText(recMs / days)} of clips a day (${clips} clips in the last ${days} days).`);
+
+    // Is the camera overwriting? Allow a day of slack for a quiet first day.
+    const overwriting = oldest !== null && oldest > startMs + DAY;
+    let life = sdLife(sn);
+    if (oldest === null) {
+      lines.push("No recordings found on the card.");
+    } else if (overwriting) {
+      const held = Math.round((today - oldest) / DAY);
+      lines.push(`<strong>The card is full and overwriting.</strong> The oldest recording is from ${longDate(isoDay(oldest))}, after the card was emptied on ${longDate(start)}. A full card holds about <strong>${held} days</strong> of recordings, and Liza will use that from now on.`);
+      if (held >= 1) { life = held; setSdLife(sn, held); $("#sdLife").value = held; }
+    } else {
+      lines.push(`The oldest recording is from ${longDate(isoDay(oldest))}, so nothing has been overwritten yet.`);
+    }
+
+    let check, full = null;
+    if (overwriting) {
+      check = todayInput();
+    } else if (life) {
+      full = isoDay(startMs + life * DAY);
+      check = isoDay(Math.max(today, startMs + Math.max(1, Math.floor(life * 0.9)) * DAY));
+      const pct = Math.min(100, Math.round(((today - startMs) / DAY / life) * 100));
+      lines.push(full <= todayInput()
+        ? `A full card lasts about ${life} days, so <strong>it is probably full by now</strong> (around ${longDate(full)}). Check it now.`
+        : `A full card lasts about ${life} days: about <strong>${pct}%</strong> used, full around <strong>${longDate(full)}</strong>. Suggested check: <strong>${longDate(check)}</strong>, a little early in case the camera is busier than usual.`);
+    } else {
+      check = isoDay(Math.max(today, startMs + FIRST_CHECK_DAYS * DAY));
+      lines.push(`Liza can't tell how full the card is yet: EZVIZ doesn't report free space, and the space a camera uses isn't proportional to clip length. Enter how many days a full card lasts if you know, or check on <strong>${longDate(check)}</strong>. On that day press this button again: if the camera has started overwriting, Liza measures how many days the card holds and plans from then on.`);
+    }
+
+    $("#sdResult").innerHTML = lines.map((l) => `<div>${l}</div>`).join("");
+    $("#sdResult").hidden = false;
+    $("#sdCheck").value = check;
+    state.sdEstimate = { start, full, check };
+    sdMsg(overwriting ? "Empty the card, set today as the emptied date, then check again to plan the next reminder." : "Adjust the check date if you like, then save the reminder.");
+  } catch (e) {
+    sdMsg("Check failed. " + e.message + " If the camera is asleep, press the doorbell and try again.");
+  } finally { btn.disabled = false; }
+}
+
+function saveSdReminder() {
+  if (!state.device) return null;
+  const start = $("#sdStart").value, check = $("#sdCheck").value;
+  if (!start || !check) { sdMsg("Choose both dates first, or press Check the card for a suggestion."); return null; }
+  if (check < start) { sdMsg("The check date must be after the date the card was emptied."); return null; }
+  const est = state.sdEstimate && state.sdEstimate.start === start ? state.sdEstimate : null;
+  const plan = { start, check, full: est ? est.full : null, saved: Date.now() };
+  saveSdPlan(state.device.deviceSerial, plan);
+  sdMsg(`Reminder saved for ${longDate(check)}. Liza shows it when you open it on or after that day. Add it to your calendar to be reminded even when Liza is closed.`);
+  updateSdBanner();
+  return plan;
+}
+
+function downloadIcs() {
+  const plan = saveSdReminder();
+  if (!plan) return;
+  const name = (state.device.deviceName || "camera").replace(/[\r\n]/g, " ");
+  const esc = (t) => t.replace(/[\\,;]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
+  const d = plan.check.replaceAll("-", "");
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const uid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + "@liza.local";
+  const desc = `The SD card in ${name} was emptied on ${longDate(plan.start)}.`
+    + (plan.full ? ` Liza estimated it fills around ${longDate(plan.full)}.` : "")
+    + " When the card is full the camera overwrites its oldest recordings. Open Liza > Device settings > SD card reminder and press Check the card.";
+  const ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Liza//SD card reminder//EN", "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp,
+    `DTSTART:${d}T090000`, `DTEND:${d}T091500`,
+    "SUMMARY:" + esc(`Check the SD card in ${name}`),
+    "DESCRIPTION:" + esc(desc),
+    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + esc(`Check the SD card in ${name}`), "TRIGGER:PT0M", "END:VALARM",
+    "END:VEVENT", "END:VCALENDAR",
+  ].map((l) => l.replace(/(.{74})(?=.)/g, "$1\r\n ")).join("\r\n") + "\r\n"; // fold long lines (RFC 5545)
+  const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+  const a = el("a", { href: url, download: "Liza-SD-card-check.ics" });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function updateSdBanner() {
+  const plan = state.device && sdPlan(state.device.deviceSerial);
+  const due = !!(plan && plan.check && plan.check <= todayInput());
+  $("#sdBanner").hidden = !due;
+  if (!due) return;
+  $("#sdBannerText").textContent = `Time to check the SD card in ${state.device.deviceName || "this camera"}. It was emptied on ${longDate(plan.start)}`
+    + (plan.full ? ` and is estimated to fill around ${longDate(plan.full)}.` : ".");
+}
+
+function openSdCard() { showTab("settings"); $("#sdCard").scrollIntoView({ behavior: "smooth", block: "start" }); }
+$("#sdStart").addEventListener("change", () => { $("#sdCheck").min = $("#sdStart").value; sdReset(); });
+$("#sdLife").addEventListener("change", () => {
+  if (!state.device) return;
+  const n = Number($("#sdLife").value);
+  setSdLife(state.device.deviceSerial, n >= 1 && n <= 3650 ? n : 0);
+  sdReset();
+});
+$("#sdEstimate").addEventListener("click", checkSd);
+$("#sdFind").addEventListener("click", async () => {
+  if (!state.device) return;
+  $("#sdFind").disabled = true;
+  try {
+    const day = await findOldestDay(state.device.deviceSerial, sdMsg);
+    if (day === null) { sdMsg("No recordings found on the card in the last 400 days. If the camera is asleep, press the doorbell and try again."); return; }
+    $("#sdStart").value = isoDay(day);
+    $("#sdCheck").min = isoDay(day);
+    sdReset();
+    sdMsg(`The oldest recording on the card is from ${longDate(isoDay(day))}. If you emptied the card that day, keep this date and press Check the card.`);
+  } finally { $("#sdFind").disabled = false; }
+});
+$("#sdSave").addEventListener("click", saveSdReminder);
+$("#sdIcs").addEventListener("click", downloadIcs);
+$("#sdClear").addEventListener("click", () => {
+  if (!state.device) return;
+  saveSdPlan(state.device.deviceSerial, null);
+  $("#sdCheck").value = "";
+  sdMsg("Reminder removed.");
+  updateSdBanner();
+});
+$("#sdBannerOpen").addEventListener("click", openSdCard);
+$("#sdBannerDone").addEventListener("click", () => {
+  if (!state.device) return;
+  const sn = state.device.deviceSerial;
+  const old = sdPlan(sn);
+  // If the card was full when emptied, the time since it was last emptied is (at most) its life.
+  if (old && old.start && confirm("Was the card full when you emptied it? Liza uses the time since it was last emptied to plan the next reminder.")) {
+    const days = Math.round((dayMs(todayInput()) - dayMs(old.start)) / DAY);
+    if (days >= 1) setSdLife(sn, days);
+  }
+  saveSdPlan(sn, { start: todayInput(), check: null, full: null, saved: Date.now() });
+  loadSdPlan();
+  openSdCard();
+  sdMsg("Marked as emptied today. Press Check the card to plan the next reminder.");
 });
 
 /* ---------- tabs ---------- */

@@ -182,3 +182,10 @@ body.no-scroll { overflow: hidden; }
   .main { padding: 16px; }
   .thumb { width: 96px; }
 }
+
+/* SD card reminder */
+.banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0 0 14px;
+  padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--accent); }
+.banner span { flex: 1 1 260px; }
+.sd-result { line-height: 1.55; }
+.sd-result strong { color: #fff; font-weight: 600; }

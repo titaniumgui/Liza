@@ -19,3 +19,6 @@ web/session.json
 web/vendor/
 web/**/__pycache__/
 *.tmp
+
+# Release signing (kept outside the repo)
+keystore.properties

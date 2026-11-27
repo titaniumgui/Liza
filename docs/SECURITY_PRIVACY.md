@@ -37,6 +37,8 @@
 | `RECORD_AUDIO` | Two-way talk; requested only when you tap **Talk** |
 | `MODIFY_AUDIO_SETTINGS` | Audio routing during talk |
 | `WRITE_EXTERNAL_STORAGE` (Android ≤ 9 only) | Saving snapshots and recordings |
+| `POST_NOTIFICATIONS` | The SD card reminder; requested only when you save a reminder (Android 13+) |
+| `RECEIVE_BOOT_COMPLETED` | Schedules a saved SD card reminder again after the phone restarts |
 
 ## Publishing checklist
 
@@ -54,7 +56,7 @@ There is no AppKey or token anywhere in the source; each user enters their own a
 |---|---|---|
 | AppKey, AppSecret, region | `web/config.json` | Local file, git-ignored. The page never receives the AppSecret back. |
 | EZVIZ access token | `web/session.json` | Local file, git-ignored. Deleted on sign-out. |
-| SD clip thumbnails, UI preferences | Browser local storage | Per browser, on this computer |
+| SD clip thumbnails, UI preferences, SD card reminder | Browser local storage | Per browser, on this computer |
 | Snapshots and recordings | Your browser's download folder | Saved only when you click Snapshot or Record |
 
 - The server listens on `127.0.0.1` only. It refuses requests whose `Host` isn't `localhost`/`127.0.0.1` (DNS rebinding), and POSTs whose `Origin` is another website.

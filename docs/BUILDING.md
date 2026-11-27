@@ -38,10 +38,22 @@ Use a physical ARM phone. x86_64 emulator images work only when they include ARM
 
 ## Release builds
 
-The project has no release signing configuration yet. To publish a signed release:
+`app/build.gradle` signs release builds from a `keystore.properties` file that never enters the repository:
 
-1. Create a keystore. `*.jks` and `*.keystore` are already git-ignored, so it stays out of the repository.
-2. Add a `signingConfigs.release` block that reads its passwords from environment variables or `~/.gradle/gradle.properties`, never from the repository.
-3. Run `.\gradlew.bat assembleRelease`.
+1. Create a keystore outside the project:
+   ```powershell
+   keytool -genkeypair -keystore C:\keys\liza-release.jks -storetype PKCS12 -alias liza -keyalg RSA -keysize 4096 -validity 10000
+   ```
+2. Create `keystore.properties` next to it:
+   ```properties
+   storeFile=C:/keys/liza-release.jks
+   storePassword=...
+   keyAlias=liza
+   keyPassword=...
+   ```
+3. Point Gradle at it in your **own** `~/.gradle/gradle.properties`: `liza.signing=C:/keys/keystore.properties`. A `keystore.properties` in the project root also works. It, `*.jks` and `*.keystore` are git-ignored.
+4. Run `.\gradlew.bat assembleRelease`. The signed APK is `app/build/outputs/apk/release/app-release.apk`.
+
+Without a signing file, `assembleRelease` produces an unsigned APK. Keep a backup of the keystore and its passwords: every update must be signed with the same key, or users have to uninstall first. Code shrinking (R8) is off because the EZVIZ SDK relies on reflection and JNI.
 
 If you turn on R8 (`minifyEnabled true`), add keep rules for the EZVIZ SDK packages (`com.videogo.**`, `com.ezviz.**`). The SDK uses reflection and JNI.
