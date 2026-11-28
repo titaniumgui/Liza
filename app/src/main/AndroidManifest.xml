@@ -14,6 +14,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false"
+        android:supportsRtl="true"
         android:usesCleartextTraffic="false">
         <!-- EZVIZ SDK intermediate page used for OAuth sign-in. -->
         <activity
@@ -21,6 +22,7 @@
             android:screenOrientation="portrait"
             android:configChanges="orientation|keyboardHidden"
             android:exported="false" />
+        <activity android:name="app.liza.android.LanguageActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity android:name="app.liza.android.AboutActivity" android:screenOrientation="portrait" android:exported="false" />
         <activity
             android:name="app.liza.android.LiveActivity"

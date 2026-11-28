@@ -25,6 +25,7 @@ Liza is a lightweight native Android app for fast access to EZVIZ cameras. It wa
 - **Motion alerts** from the last 24 hours, with snapshots; tap one to play the matching SD recording
 - **Device settings**: rename, arm/disarm, storage status, video quality, and 180° image flip
 - **SD card reminder**: Liza detects when the card is full and overwriting, learns how many days a full card lasts, and notifies you before the next one fills
+- **English and Arabic** (العربية): chosen on first launch, with a full right-to-left layout in Arabic. Change it any time in About
 - **Encrypted streams**: asks for the camera's verification code once and remembers it
 - **Automatic fallback** from EZVIZ relay to direct P2P when video doesn't arrive
 - **Private by design**: the AppKey, token and codes are encrypted with Android Keystore; Liza never sees your EZVIZ password and has no analytics
@@ -41,7 +42,7 @@ Camera video, thumbnails, the AppKey and device serial numbers are blurred for p
 
 ## Liza web (for your computer)
 
-The [`web/`](web/) folder has a computer version of Liza. It runs locally at `http://localhost:8790` with a small Python server and EZVIZ's official web player. It offers live video in SD/HD/FHD, zoom, full screen, two-way talk, snapshots, MP4 recording, SD card playback with thumbnails, motion alerts, device settings and the SD card reminder.
+The [`web/`](web/) folder has a computer version of Liza. It runs locally at `http://localhost:8790` with a small Python server and EZVIZ's official web player. It offers live video in SD/HD/FHD, zoom, full screen, two-way talk, snapshots, MP4 recording, SD card playback with thumbnails, motion alerts, device settings and the SD card reminder, in English or Arabic.
 
 <p align="center"><img src="docs/screenshots/web-01-live.png" width="640" alt="Liza web live view"></p>
 
@@ -57,8 +58,8 @@ On Windows, double-click `web/Start Liza.bat`. See the [Liza web README](web/REA
 
 | Version | Download |
 |---|---|
-| **Android** | [Liza 0.4.0](https://github.com/titaniumgui/Liza/releases/tag/v0.4.0): `Liza-0.4.0.apk`. See the [user guide](docs/USER_GUIDE.md#install-the-apk) for install steps. |
-| **Computer (web)** | [Liza web 1.1.0](https://github.com/titaniumgui/Liza/releases/tag/web-v1.1.0): `Liza-web-1.1.0.zip`. See the [Liza web README](web/README.md). |
+| **Android** | [Liza 0.5.0](https://github.com/titaniumgui/Liza/releases/tag/v0.5.0): `Liza-0.5.0.apk`. See the [user guide](docs/USER_GUIDE.md#install-the-apk) for install steps. |
+| **Computer (web)** | [Liza web 1.2.0](https://github.com/titaniumgui/Liza/releases/tag/web-v1.2.0): `Liza-web-1.2.0.zip`. See the [Liza web README](web/README.md). |
 
 All versions are on the [**Releases**](../../releases) page.
 
@@ -92,7 +93,7 @@ You need JDK 17–21 (with `JAVA_HOME` set) and Android SDK Platform 35. The out
 
 ## Project status
 
-Version **0.4.0**. Live view, talk, recording, SD playback, alerts, device settings and the SD card reminder are implemented. Push notifications for alerts are **not** implemented. A computer version, [Liza web](web/README.md), is included and tested with a DP2C. See [Known issues](docs/KNOWN_ISSUES.md).
+Version **0.5.0**. Live view, talk, recording, SD playback, alerts, device settings and the SD card reminder are implemented, in English and Arabic. Push notifications for alerts are **not** implemented. A computer version, [Liza web](web/README.md), is included and tested with a DP2C. See [Known issues](docs/KNOWN_ISSUES.md).
 
 ## License
 

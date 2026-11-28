@@ -1,5 +1,7 @@
 package app.liza.android;
 
+import static app.liza.android.I18n.tr;
+
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -34,6 +36,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
+    @Override protected void attachBaseContext(android.content.Context base) { super.attachBaseContext(I18n.wrap(base)); }
+
     private static final int BG = Color.rgb(12, 17, 25);
     private static final int PANEL = Color.rgb(23, 31, 43);
     private static final int MUTED = Color.rgb(158, 172, 191);
@@ -55,18 +59,18 @@ public final class MainActivity extends Activity {
                 try {
                     EZAccessToken access = EZGlobalSDK.getInstance().getEZAccessToken();
                     if (access == null || access.getAccessToken() == null || access.getAccessToken().isEmpty()) {
-                        runOnUiThread(() -> setStatus("EZVIZ sign-in finished, but no access token was returned."));
+                        runOnUiThread(() -> setStatus(tr("EZVIZ sign-in finished, but no access token was returned.")));
                         return;
                     }
                     app.vault().put("access_token", access.getAccessToken());
                     EZGlobalSDK.getInstance().setAccessToken(access.getAccessToken());
                     runOnUiThread(() -> {
-                        setStatus("Connected to EZVIZ");
+                        setStatus(tr("Connected to EZVIZ"));
                         refreshAuthControls();
                         refreshDevices();
                     });
                 } catch (Exception e) {
-                    runOnUiThread(() -> setStatus("Sign-in completed, but Liza could not save the session."));
+                    runOnUiThread(() -> setStatus(tr("Sign-in completed, but Liza could not save the session.")));
                 }
             });
         }
@@ -74,6 +78,12 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        // First run: choose the language before anything else.
+        if (!I18n.chosen(this)) {
+            startActivity(new Intent(this, LanguageActivity.class));
+            finish();
+            return;
+        }
         app = (LizaApplication) getApplication();
         buildHome();
         registerLoginReceiver();
@@ -81,14 +91,14 @@ public final class MainActivity extends Activity {
         if (configured) {
             String token = app.vault().get("access_token");
             if (token != null) {
-                setStatus("Signed in to EZVIZ");
+                setStatus(tr("Signed in to EZVIZ"));
                 refreshAuthControls();
                 refreshDevices();
             } else {
-                setStatus("Sign in to load your door viewer");
+                setStatus(tr("Sign in to load your door viewer"));
             }
         } else {
-            setStatus("Add your EZVIZ Open Platform AppKey to get started");
+            setStatus(tr("Add your EZVIZ Open Platform AppKey to get started"));
         }
     }
 
@@ -132,33 +142,34 @@ public final class MainActivity extends Activity {
         TextView brand = text("LIZA", 13, ACCENT, true);
         brand.setLetterSpacing(.18f);
         brandRow.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
-        TextView about = text("i", 16, ACCENT, true);
+        TextView about = text(tr("i"), 16, ACCENT, true);
         about.setGravity(Gravity.CENTER);
+        about.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         about.setBackground(rounded(PANEL, 24));
-        about.setContentDescription("About Liza");
+        about.setContentDescription(tr("About Liza"));
         about.setClickable(true);
         about.setFocusable(true);
         brandRow.addView(about, new LinearLayout.LayoutParams(dp(36), dp(36)));
         about.setOnClickListener(v -> startActivity(new Intent(this, AboutActivity.class)));
         content.addView(brandRow);
-        TextView title = text("Front door", 30, Color.WHITE, true);
+        TextView title = text(tr("Front door"), 30, Color.WHITE, true);
         LinearLayout.LayoutParams tp = params(-1, -2);
         tp.topMargin = dp(8);
         content.addView(title, tp);
-        content.addView(text("A quicker way to see and answer your door", 14, MUTED, false));
+        content.addView(text(tr("A quicker way to see and answer your door"), 14, MUTED, false));
 
         LinearLayout statusCard = card();
         LinearLayout.LayoutParams cp = params(-1, -2);
         cp.topMargin = dp(22);
         content.addView(statusCard, cp);
-        status = text("Checking EZVIZ setup…", 15, Color.WHITE, true);
+        status = text(tr("Checking EZVIZ setup…"), 15, Color.WHITE, true);
         statusCard.addView(status);
 
-        TextView setupHeader = section("EZVIZ connection");
+        TextView setupHeader = section(tr("EZVIZ connection"));
         content.addView(setupHeader, top(24));
         appKeyInput = new EditText(this);
         appKeyInput.setSingleLine(true);
-        appKeyInput.setHint("Open Platform AppKey");
+        appKeyInput.setHint(tr("Open Platform AppKey"));
         appKeyInput.setTextColor(Color.WHITE);
         appKeyInput.setHintTextColor(MUTED);
         appKeyInput.setTextSize(15);
@@ -172,7 +183,7 @@ public final class MainActivity extends Activity {
         ArrayAdapter<ServerRegion> adapter = new ArrayAdapter<ServerRegion>(this, 0, ServerRegion.values()) {
             private TextView regionView(ServerRegion region) {
                 TextView view = new TextView(MainActivity.this);
-                view.setText(region.label);
+                view.setText(tr(region.label));
                 view.setTextColor(Color.WHITE);
                 view.setTextSize(15);
                 view.setGravity(Gravity.CENTER_VERTICAL);
@@ -193,26 +204,26 @@ public final class MainActivity extends Activity {
         regionPicker.setPadding(dp(12), 0, dp(12), 0);
         regionPicker.setSelection(regionIndex(ServerRegion.fromLabel(app.vault().get("region"))));
         content.addView(regionPicker, topHeight(52, 8));
-        TextView regionHint = text("Choose the same EZVIZ service region as your account and camera.", 12, MUTED, false);
+        TextView regionHint = text(tr("Choose the same EZVIZ service region as your account and camera."), 12, MUTED, false);
         content.addView(regionHint, top(6));
 
-        Button save = button("Save connection", ACCENT, BG);
+        Button save = button(tr("Save connection"), ACCENT, BG);
         save.setOnClickListener(v -> saveConnection());
         content.addView(save, topHeight(52, 12));
 
-        signInButton = button("Sign in with EZVIZ", PANEL, Color.WHITE);
+        signInButton = button(tr("Sign in with EZVIZ"), PANEL, Color.WHITE);
         signInButton.setOnClickListener(v -> signIn());
         content.addView(signInButton, topHeight(52, 10));
-        signOutButton = button("Sign out", PANEL, Color.WHITE);
+        signOutButton = button(tr("Sign out"), PANEL, Color.WHITE);
         signOutButton.setOnClickListener(v -> signOut());
         content.addView(signOutButton, topHeight(48, 8));
 
-        TextView devicesTitle = section("Your devices");
+        TextView devicesTitle = section(tr("Your devices"));
         content.addView(devicesTitle, top(26));
-        Button refresh = button("Refresh devices", PANEL, Color.WHITE);
+        Button refresh = button(tr("Refresh devices"), PANEL, Color.WHITE);
         refresh.setOnClickListener(v -> refreshDevices());
         content.addView(refresh, topHeight(48, 10));
-        Button alerts = button("Recent motion alerts", PANEL, Color.WHITE);
+        Button alerts = button(tr("Recent motion alerts"), PANEL, Color.WHITE);
         alerts.setOnClickListener(v -> startActivity(new Intent(this, AlertsActivity.class)));
         content.addView(alerts, topHeight(48, 8));
 
@@ -220,7 +231,7 @@ public final class MainActivity extends Activity {
         deviceList.setOrientation(LinearLayout.VERTICAL);
         content.addView(deviceList, top(6));
 
-        TextView privacy = text("Liza stores the AppKey and EZVIZ session token encrypted on this phone. Camera video is streamed by the EZVIZ SDK.", 12, MUTED, false);
+        TextView privacy = text(tr("Liza stores the AppKey and EZVIZ session token encrypted on this phone. Camera video is streamed by the EZVIZ SDK."), 12, MUTED, false);
         content.addView(privacy, top(26));
         setContentView(scroll);
         refreshAuthControls();
@@ -229,7 +240,7 @@ public final class MainActivity extends Activity {
     private void refreshAuthControls() {
         if (signInButton == null || signOutButton == null) return;
         boolean signedIn = app.vault().get("access_token") != null;
-        signInButton.setText(signedIn ? "Signed in to EZVIZ" : "Sign in with EZVIZ");
+        signInButton.setText(signedIn ? tr("Signed in to EZVIZ") : tr("Sign in with EZVIZ"));
         signInButton.setEnabled(!signedIn);
         signInButton.setAlpha(signedIn ? 0.75f : 1f);
         signOutButton.setVisibility(signedIn ? View.VISIBLE : View.GONE);
@@ -241,10 +252,10 @@ public final class MainActivity extends Activity {
             if (sdk != null) sdk.logout();
             app.vault().put("access_token", null);
             deviceList.removeAllViews();
-            setStatus("Signed out of EZVIZ");
+            setStatus(tr("Signed out of EZVIZ"));
             refreshAuthControls();
         } catch (Exception e) {
-            setStatus("Could not sign out. Please try again.");
+            setStatus(tr("Could not sign out. Please try again."));
         }
     }
 
@@ -256,8 +267,8 @@ public final class MainActivity extends Activity {
     private void saveConnection() {
         String key = appKeyInput.getText().toString().trim();
         if (key.isEmpty()) {
-            Toast.makeText(this, "Enter your AppKey first", Toast.LENGTH_SHORT).show();
-            setStatus("AppKey is required");
+            Toast.makeText(this, tr("Enter your AppKey first"), Toast.LENGTH_SHORT).show();
+            setStatus(tr("AppKey is required"));
             return;
         }
         ServerRegion region = (ServerRegion) regionPicker.getSelectedItem();
@@ -269,19 +280,19 @@ public final class MainActivity extends Activity {
             app.vault().put("app_key", key);
             app.vault().put("region", region.label);
             if (!app.configureIfReady()) {
-                setStatus("SDK setup failed. Check the AppKey and selected region.");
+                setStatus(tr("SDK setup failed. Check the AppKey and selected region."));
                 return;
             }
-            setStatus("Connection settings saved. Sign in to EZVIZ.");
-            Toast.makeText(this, "Connection settings saved", Toast.LENGTH_SHORT).show();
+            setStatus(tr("Connection settings saved. Sign in to EZVIZ."));
+            Toast.makeText(this, tr("Connection settings saved"), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            setStatus("Could not securely save the AppKey on this phone.");
+            setStatus(tr("Could not securely save the AppKey on this phone."));
         }
     }
 
     private void signIn() {
         if (!app.configureIfReady()) {
-            Toast.makeText(this, "Save your AppKey and region first", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, tr("Save your AppKey and region first"), Toast.LENGTH_LONG).show();
             return;
         }
         ServerRegion region = (ServerRegion) regionPicker.getSelectedItem();
@@ -289,29 +300,29 @@ public final class MainActivity extends Activity {
         try {
             EZGlobalSDK.getInstance().openLoginPage(region.areaId);
         } catch (Exception e) {
-            setStatus("Could not open EZVIZ sign-in: " + e.getMessage());
+            setStatus(tr("Could not open EZVIZ sign-in: {0}", e.getMessage()));
         }
     }
 
     private void refreshDevices() {
         if (!app.configureIfReady()) {
-            setStatus("Save your EZVIZ AppKey and region first");
+            setStatus(tr("Save your EZVIZ AppKey and region first"));
             return;
         }
         if (app.vault().get("access_token") == null) {
-            setStatus("Sign in to EZVIZ before loading devices");
+            setStatus(tr("Sign in to EZVIZ before loading devices"));
             return;
         }
-        setStatus("Loading devices…");
+        setStatus(tr("Loading devices…"));
         worker.execute(() -> {
             try {
                 List<EZDeviceInfo> result = EZGlobalSDK.getInstance().getDeviceList(0, 20);
                 runOnUiThread(() -> showDevices(result));
             } catch (BaseException e) {
-                String message = "Could not load devices (EZVIZ error " + e.getErrorCode() + "). Check account region, AppKey, and session.";
+                String message = tr("Could not load devices (EZVIZ error {0}). Check account region, AppKey, and session.", e.getErrorCode());
                 runOnUiThread(() -> { setStatus(message); deviceList.removeAllViews(); });
             } catch (Exception e) {
-                runOnUiThread(() -> setStatus("Device request failed: " + e.getMessage()));
+                runOnUiThread(() -> setStatus(tr("Device request failed: {0}", e.getMessage())));
             }
         });
     }
@@ -321,18 +332,18 @@ public final class MainActivity extends Activity {
         deviceList.removeAllViews();
         if (result != null) devices.addAll(result);
         if (devices.isEmpty()) {
-            setStatus("Connected. No devices were returned for this account.");
-            deviceList.addView(text("Add the DP2C to this EZVIZ account, then refresh.", 14, MUTED, false), top(8));
+            setStatus(tr("Connected. No devices were returned for this account."));
+            deviceList.addView(text(tr("Add the DP2C to this EZVIZ account, then refresh."), 14, MUTED, false), top(8));
             return;
         }
-        setStatus("Connected · " + devices.size() + (devices.size() == 20 ? "+ devices" : " device(s)"));
+        setStatus(tr("Connected · {0} device(s)", devices.size() + (devices.size() == 20 ? "+" : "")));
         for (EZDeviceInfo device : devices) addDeviceRow(device);
     }
 
     private void addDeviceRow(EZDeviceInfo device) {
         String serial = device.getDeviceSerial();
         String name = device.getDeviceName();
-        if (name == null || name.trim().isEmpty()) name = "Door viewer";
+        if (name == null || name.trim().isEmpty()) name = tr("Door viewer");
         final String displayName = name;
         LinearLayout row = card();
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -342,14 +353,14 @@ public final class MainActivity extends Activity {
         LinearLayout textBlock = new LinearLayout(this);
         textBlock.setOrientation(LinearLayout.VERTICAL);
         textBlock.addView(text(displayName, 16, Color.WHITE, true));
-        String state = device.getStatus() == 1 ? "Online" : "Offline";
+        String state = device.getStatus() == 1 ? tr("Online") : tr("Offline");
         textBlock.addView(text(state + "  ·  " + serial, 12, MUTED, false), top(5));
         row.addView(textBlock, new LinearLayout.LayoutParams(0, -2, 1f));
         row.setOnClickListener(v -> openDevice(device, displayName));
-        Button settings = button("⚙  Settings", BG, ACCENT);
+        Button settings = button(tr("⚙  Settings"), BG, ACCENT);
         settings.setTextSize(12);
         settings.setMinHeight(dp(44));
-        settings.setContentDescription("Settings for " + displayName);
+        settings.setContentDescription(tr("Settings for {0}", displayName));
         row.addView(settings, new LinearLayout.LayoutParams(dp(104), dp(44)));
         settings.setOnClickListener(v -> {
             Intent intent = new Intent(this, DeviceSettingsActivity.class);
@@ -404,6 +415,7 @@ public final class MainActivity extends Activity {
     }
     private TextView text(String value, int size, int color, boolean bold) {
         TextView view = new TextView(this);
+        view.setTextAlignment(android.view.View.TEXT_ALIGNMENT_VIEW_START);
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);

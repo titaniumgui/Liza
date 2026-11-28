@@ -54,7 +54,7 @@ select.btn { cursor: pointer; }
 .signin { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
 .signin-card { width: 100%; max-width: 520px; }
 .signin-card h1 { margin-top: 8px; }
-.steps { padding-left: 20px; display: grid; gap: 20px; margin-top: 28px; }
+.steps { padding-inline-start: 20px; display: grid; gap: 20px; margin-top: 28px; }
 .steps li { display: grid; gap: 10px; }
 .steps input {
   width: 100%; background: var(--panel); color: var(--text); border: 0; border-radius: 12px;
@@ -81,17 +81,17 @@ select.btn { cursor: pointer; }
 .side-title { font-size: 15px; margin-top: 8px; }
 .devices { display: grid; gap: 8px; }
 .device {
-  text-align: left; background: var(--panel); color: var(--text); border: 0; border-radius: var(--radius);
+  text-align: start; background: var(--panel); color: var(--text); border: 0; border-radius: var(--radius);
   padding: 12px 14px; cursor: pointer; font: inherit;
 }
 .device.active { outline: 2px solid var(--accent); }
 .device .name { font-weight: 600; }
 .device .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 6px; background: var(--muted); }
 .dot.on { background: var(--accent); }
 .tabs { display: grid; gap: 4px; margin-top: 12px; }
 .tab {
-  text-align: left; background: transparent; color: var(--muted); border: 0; border-radius: 10px;
+  text-align: start; background: transparent; color: var(--muted); border: 0; border-radius: 10px;
   padding: 10px 12px; cursor: pointer; font: inherit;
 }
 .tab:hover { color: var(--text); background: var(--panel); }
@@ -144,13 +144,13 @@ body.no-scroll { overflow: hidden; }
 .list { display: grid; gap: 8px; margin-top: 8px; }
 .item {
   display: flex; align-items: center; gap: 14px; background: var(--panel); border: 0; color: var(--text);
-  border-radius: 14px; padding: 10px 12px; text-align: left; font: inherit; cursor: pointer; width: 100%;
+  border-radius: 14px; padding: 10px 12px; text-align: start; font: inherit; cursor: pointer; width: 100%;
 }
 .item:hover { background: var(--panel-2); }
 .item.playing { outline: 2px solid var(--accent); }
 .item .t { font-weight: 600; }
 .item .s { color: var(--muted); font-size: 13px; }
-.item .play { margin-left: auto; color: var(--accent); }
+.item .play { margin-inline-start: auto; color: var(--accent); }
 .thumb {
   width: 120px; aspect-ratio: 16 / 9; border-radius: 10px; background: var(--panel-2) center / cover no-repeat;
   flex: none;
@@ -189,3 +189,34 @@ body.no-scroll { overflow: hidden; }
 .banner span { flex: 1 1 260px; }
 .sd-result { line-height: 1.55; }
 .sd-result strong { color: #fff; font-weight: 600; }
+
+/* Arabic: right-to-left, with fonts that cover Arabic. The video player,
+   timecodes and keys stay left-to-right (dir="ltr" in the HTML). */
+html[lang="ar"] body { font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", "Geeza Pro", system-ui, sans-serif; line-height: 1.6; }
+html[lang="ar"] h1 { letter-spacing: 0; }
+html[dir="rtl"] .toast { direction: rtl; }
+input[dir="ltr"] { text-align: left; }
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang-switch { font-size: 14px; }
+
+/* Language window */
+.lang-card { max-width: 560px; text-align: center; }
+.lang-title { display: grid; gap: 2px; margin: 10px 0 26px; }
+.lang-title h1 { margin: 0; font-size: 26px; }
+.lang-title h1[lang="ar"] { font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif; color: var(--muted); font-weight: 600; }
+.lang-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 14px; }
+.lang-option {
+  display: grid; justify-items: center; gap: 6px; padding: 26px 18px 22px;
+  background: var(--panel); color: var(--text); border: 2px solid transparent; border-radius: 20px;
+  font: inherit; cursor: pointer; transition: border-color .15s, transform .15s, background .15s;
+}
+.lang-option:hover, .lang-option:focus-visible { border-color: var(--accent); background: var(--panel-2); transform: translateY(-2px); outline: none; }
+.lang-option[lang="ar"] { font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif; }
+.lang-mark {
+  width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(57, 197, 160, .14); color: var(--accent); font-size: 24px; font-weight: 700;
+}
+.lang-name { font-size: 22px; font-weight: 700; }
+.lang-sub { font-size: 13px; color: var(--muted); }
+.lang-note { margin-top: 22px; display: grid; gap: 2px; }
+.lang-row .btn[lang="ar"] { font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif; }

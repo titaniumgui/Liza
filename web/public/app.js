@@ -78,10 +78,10 @@ function wallStamp(ms) { // YYYYMMDDHHmmss of a wall-time value, as the player e
   const d = new Date(ms);
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
 }
-const hhmmss = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "UTC" });
-const hhmm = (ms) => new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-const wallDateTime = (ms) => new Date(ms).toLocaleString([], { dateStyle: "medium", timeStyle: "medium", timeZone: "UTC" });
-function dur(ms) { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)} min ${pad(s % 60)} sec`; }
+const hhmmss = (ms) => new Date(ms).toLocaleTimeString(I18N.locale, { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "UTC" });
+const hhmm = (ms) => new Date(ms).toLocaleTimeString(I18N.locale, { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+const wallDateTime = (ms) => new Date(ms).toLocaleString(I18N.locale, { dateStyle: "medium", timeStyle: "medium", timeZone: "UTC" });
+function dur(ms) { const s = Math.max(0, Math.round(ms / 1000)); return t("{0} min {1} sec", Math.floor(s / 60), pad(s % 60)); }
 function fileStamp() { return `Liza-${wallStamp(wallNow())}`; }
 function el(tag, attrs = {}, ...kids) {
   const e = document.createElement(tag);
@@ -98,9 +98,9 @@ function el(tag, attrs = {}, ...kids) {
 async function api(name, params = {}) {
   const res = await fetch("/api/ezviz/" + name, { method: "POST", body: JSON.stringify(params) });
   const j = await res.json().catch(() => ({}));
-  if (j.signedOut) { showSignIn(); throw new Error(j.error); }
-  if (j.error) throw new Error(j.error);
-  if (String(j.code) !== "200") throw new Error(`EZVIZ error ${j.code}${j.msg ? ": " + j.msg : ""}`);
+  if (j.signedOut) { showSignIn(); throw new Error(tServer(j.error)); }
+  if (j.error) throw new Error(tServer(j.error));
+  if (String(j.code) !== "200") throw new Error(j.msg ? t("EZVIZ error {0}: {1}", j.code, j.msg) : t("EZVIZ error {0}", j.code));
   return j.data;
 }
 
@@ -111,24 +111,24 @@ async function getConfig() {
 }
 function fillConnForm(form, cfg) {
   const sel = form.elements.region;
-  if (!sel.options.length) for (const r of cfg.regions) sel.append(new Option(r, r));
+  if (!sel.options.length) for (const r of cfg.regions) sel.append(new Option(t(r), r));
   form.elements.appKey.value = cfg.appKey || "";
   form.elements.appSecret.value = "";
-  form.elements.appSecret.placeholder = cfg.hasSecret ? "Saved (hidden). Type a new one to replace it." : form.id === "setupForm"
-    ? "Leave empty to sign in with your EZVIZ account instead" : "Not set";
+  form.elements.appSecret.placeholder = cfg.hasSecret ? t("Saved (hidden). Type a new one to replace it.") : form.id === "setupForm"
+    ? t("Leave empty to sign in with your EZVIZ account instead") : t("Not set");
   sel.value = cfg.region || "Europe";
 }
 async function saveConnection(form, extra = {}) {
   const msg = form.querySelector(".form-msg");
   const body = { appKey: form.elements.appKey.value.trim(), region: form.elements.region.value, ...extra };
   if (form.elements.appSecret.value.trim()) body.appSecret = form.elements.appSecret.value.trim();
-  msg.textContent = body.appSecret ? "Checking your AppKey and AppSecret with EZVIZ…" : "Saving…";
+  msg.textContent = body.appSecret ? t("Checking your AppKey and AppSecret with EZVIZ…") : t("Saving…");
   const res = await fetch("/api/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const j = await res.json().catch(() => ({ error: "No response from the Liza server." }));
   form.elements.appSecret.value = "";
-  if (j.error) { msg.textContent = j.error; return false; }
+  if (j.error) { msg.textContent = tServer(j.error); return false; }
   state.config = j;
-  msg.textContent = "Saved.";
+  msg.textContent = t("Saved.");
   return true;
 }
 function showSetup() {
@@ -148,19 +148,19 @@ $("#connForm").addEventListener("submit", async (e) => {
   const before = JSON.stringify(state.config);
   if (await saveConnection(e.target)) {
     renderConnInfo();
-    if (JSON.stringify(state.config) !== before) { toast("Connection updated. Reconnecting…"); boot(); }
+    if (JSON.stringify(state.config) !== before) { toast(t("Connection updated. Reconnecting…")); boot(); }
   }
 });
 $("#clearSecret").addEventListener("click", async () => {
-  if (!state.config || !state.config.hasSecret) return toast("No AppSecret is saved");
-  if (!confirm("Remove the AppSecret? You'll sign in with your EZVIZ account instead.")) return;
-  if (await saveConnection($("#connForm"), { clearSecret: true })) { toast("AppSecret removed"); boot(); }
+  if (!state.config || !state.config.hasSecret) return toast(t("No AppSecret is saved"));
+  if (!confirm(t("Remove the AppSecret? You'll sign in with your EZVIZ account instead."))) return;
+  if (await saveConnection($("#connForm"), { clearSecret: true })) { toast(t("AppSecret removed")); boot(); }
 });
 function renderConnInfo() {
   const c = state.config || {};
   $("#connInfo").textContent = c.hasSecret
-    ? `Connected automatically with your AppSecret · ${c.region}. Access renews by itself.`
-    : `Signed in with your EZVIZ account · ${c.region}. Add an AppSecret to skip the sign-in step.`;
+    ? t("Connected automatically with your AppSecret · {0}. Access renews by itself.", t(c.region || ""))
+    : t("Signed in with your EZVIZ account · {0}. Add an AppSecret to skip the sign-in step.", t(c.region || ""));
   fillConnForm($("#connForm"), c);
 }
 
@@ -174,27 +174,27 @@ function showSignIn() {
 $("#pasteBtn").addEventListener("click", async () => {
   const input = $("#pasteUrl");
   const msg = $("#pasteMsg");
-  msg.textContent = "Checking…";
+  msg.textContent = t("Checking…");
   const res = await fetch("/auth/paste", { method: "POST", body: JSON.stringify({ url: input.value }) });
   const j = await res.json();
   input.value = "";
   if (j.ok) { msg.textContent = ""; boot(); }
-  else msg.textContent = "Couldn't read that address: " + j.error + (j.fieldsFound ? ` (fields found: ${j.fieldsFound.join(", ") || "none"})` : "");
+  else msg.textContent = t("Couldn't read that address: {0}", tServer(j.error)) + (j.fieldsFound ? " " + t("(fields found: {0})", j.fieldsFound.join(", ") || t("none")) : "");
 });
 $("#signOutBtn").addEventListener("click", async () => {
-  if (!confirm("Sign out of EZVIZ on this computer?")) return;
+  if (!confirm(t("Sign out of EZVIZ on this computer?"))) return;
   await fetch("/auth/logout", { method: "POST" });
   showSignIn();
 });
 
 /* ---------- devices ---------- */
 async function loadDevices() {
-  setStatus("Loading devices…");
+  setStatus(t("Loading devices…"));
   try {
     state.devices = (await api("deviceList", { pageStart: 0, pageSize: 50 })) || [];
-  } catch (e) { setStatus("Could not load devices. " + e.message); return; }
+  } catch (e) { setStatus(t("Could not load devices. {0}", e.message)); return; }
   renderDevices();
-  if (!state.devices.length) { setStatus("No devices on this EZVIZ account."); return; }
+  if (!state.devices.length) { setStatus(t("No devices on this EZVIZ account.")); return; }
   const last = store.get("device");
   const pick = state.devices.find((d) => d.deviceSerial === last) || state.devices[0];
   selectDevice(pick);
@@ -206,16 +206,16 @@ function renderDevices() {
     const online = d.status === 1;
     const b = el("button", { class: "device" + (state.device && state.device.deviceSerial === d.deviceSerial ? " active" : ""),
       onclick: () => selectDevice(d) },
-      el("div", { class: "name" }, d.deviceName || "Door viewer"),
-      el("div", { class: "meta" }, el("span", { class: "dot" + (online ? " on" : "") }), online ? "Online" : "Offline",
-        d.defence === 1 ? " · Armed" : " · Disarmed"));
+      el("div", { class: "name" }, d.deviceName || t("Door viewer")),
+      el("div", { class: "meta" }, el("span", { class: "dot" + (online ? " on" : "") }), online ? t("Online") : t("Offline"),
+        " · " + (d.defence === 1 ? t("Armed") : t("Disarmed"))));
     box.append(b);
   }
 }
 function selectDevice(d) {
   state.device = d;
   store.set("device", d.deviceSerial);
-  $("#deviceTitle").textContent = d.deviceName || "Door viewer";
+  $("#deviceTitle").textContent = d.deviceName || t("Door viewer");
   renderDevices();
   cancelScan();
   state.recFiles = [];
@@ -256,7 +256,7 @@ function createPlayer(url, onReady) {
     handleError: (e) => {
       state.playing = false;
       const code = e && (e.retcode || (e.data && (e.data.nErrorCode || e.data.code)));
-      setStatus("Video error" + (code ? " " + code : "") + ". Wake the camera (press the doorbell) and try again.");
+      setStatus(t("Video error{0}. Wake the camera (press the doorbell) and try again.", code ? " " + code : ""));
     },
   });
 }
@@ -269,7 +269,7 @@ function liveUrl() {
 /* ---------- quality: SD / HD / FHD as reported by the camera ---------- */
 const LEVEL_NAMES = { VIDEO_LEVEL_FLUNET: "Fluent", VIDEO_LEVEL_FLUENT: "Fluent", VIDEO_LEVEL_BALANCED: "Balanced",
   VIDEO_LEVEL_STANDARD: "SD", VIDEO_LEVEL_HEIGH: "HD", VIDEO_LEVEL_HIGH: "HD", VIDEO_LEVEL_SUPER: "FHD", VIDEO_LEVEL_EXTREME: "2K+" };
-const levelLabel = (l) => LEVEL_NAMES[l.name] || ["", "SD", "HD", "FHD", "2K", "3K", "4K"][l.level] || `Level ${l.level}`;
+const levelLabel = (l) => t(LEVEL_NAMES[l.name] || ["", "SD", "HD", "FHD", "2K", "3K", "4K"][l.level] || "") || t("Level {0}", l.level);
 function fillQuality() {
   const list = (state.player && state.player.videoLevelList) || [];
   const sel = $("#quality");
@@ -283,11 +283,11 @@ async function applyQuality(level) {
   const target = p && (p.videoLevelList || []).find((l) => l.level === level);
   if (!target || p.videoLevel === level) return;
   const name = levelLabel(target);
-  setStatus(`Switching to ${name}…`);
+  setStatus(t("Switching to {0}…", name));
   try {
     await p.changeVideoLevel(target);
-    setStatus(`Live · ${name}`);
-  } catch { setStatus("Couldn't change quality. Try again."); }
+    setStatus(t("Live · {0}", name));
+  } catch { setStatus(t("Couldn't change quality. Try again.")); }
   fillQuality();
 }
 
@@ -305,7 +305,7 @@ function startStallGuard() {
       clearInterval(state.stallTimer);
       const wasRecording = state.recording;
       if (wasRecording) { try { await state.player.stopSave(); } catch { /* ignore */ } state.recording = false; }
-      toast(wasRecording ? "Live video stalled. The recording so far was saved; reconnecting…" : "Live video stalled. Reconnecting…");
+      toast(wasRecording ? t("Live video stalled. The recording so far was saved; reconnecting…") : t("Live video stalled. Reconnecting…"));
       startLive();
     }
   }, 2000);
@@ -325,7 +325,7 @@ function applyZoom() {
   $("#zoomLevel").textContent = (Math.round(z.scale * 10) / 10) + "×";
   wrap.classList.toggle("zoomed", z.scale > 1);
   $("#zoomBtn").classList.toggle("on", z.scale > 1);
-  $("#zoomBtn").textContent = z.scale > 1 ? "Reset zoom" : "Zoom";
+  $("#zoomBtn").textContent = z.scale > 1 ? t("Reset zoom") : t("Zoom");
 }
 function zoomAt(factor, cx, cy) {
   const z = state.zoom;
@@ -385,9 +385,9 @@ function setFakeFullscreen(on) {
 function isFullscreen() { return document.fullscreenElement === $("#playerWrap") || $("#playerWrap").classList.contains("fake-fs"); }
 function syncFullscreenLabels() {
   const on = isFullscreen();
-  $("#fsBtn").textContent = on ? "✕ Exit full screen" : "⛶ Full screen";
-  $("#fullBtn").textContent = on ? "Exit full screen" : "Full screen";
-  $("#recFullBtn").textContent = on ? "Exit full screen" : "Full screen";
+  $("#fsBtn").textContent = on ? "✕ " + t("Exit full screen") : "⛶ " + t("Full screen");
+  $("#fullBtn").textContent = on ? t("Exit full screen") : t("Full screen");
+  $("#recFullBtn").textContent = on ? t("Exit full screen") : t("Full screen");
 }
 function toggleFullscreen() {
   const wrap = $("#playerWrap");
@@ -422,10 +422,10 @@ function startLive() {
   if (state.recFiles.length) renderRecordings();
   state.recording = false;
   syncButtons();
-  if (state.device.status !== 1) setStatus("Camera is offline. Trying anyway…");
-  else setStatus("Connecting to camera…");
+  if (state.device.status !== 1) setStatus(t("Camera is offline. Trying anyway…"));
+  else setStatus(t("Connecting to camera…"));
   createPlayer(liveUrl(), () => {
-    setStatus("Live");
+    setStatus(t("Live"));
     if (!state.sound) state.player.closeSound();
     fillQuality();
     // Apply the saved quality once the player knows the camera's levels.
@@ -443,11 +443,11 @@ function playRecording(begin, end, label, seekTo) {
   state.lookupWindow = { begin, end };
   $("#liveBar").hidden = true;
   $("#recBar").hidden = false;
-  setStatus("Loading recording " + (label || "") + "…");
+  setStatus(t("Loading recording {0}…", label || ""));
   const from = seekTo ? Math.max(begin, seekTo) : begin;
   const url = `ezopen://open.ezviz.com/${state.device.deviceSerial}/1.rec?begin=${wallStamp(from)}&end=${wallStamp(end)}`;
   createPlayer(url, () => {
-    setStatus("Playing recording " + (label || ""));
+    setStatus(t("Playing recording {0}", label || ""));
     clearInterval(state.osdTimer);
     state.osdTimer = setInterval(tickOsd, 1000);
   });
@@ -482,18 +482,18 @@ function playNewer() {
     state.recIndex -= 1;
     playFile(state.recIndex);
   } else {
-    setStatus("End of the latest recording.");
+    setStatus(t("End of the latest recording."));
   }
 }
 
 /* ---------- live controls ---------- */
 function syncButtons() {
-  $("#playBtn").textContent = state.playing ? "Pause video" : "Resume video";
-  $("#soundBtn").textContent = state.sound ? "Sound on" : "Sound off";
+  $("#playBtn").textContent = state.playing ? t("Pause video") : t("Resume video");
+  $("#soundBtn").textContent = state.sound ? t("Sound on") : t("Sound off");
   $("#soundBtn").classList.toggle("on", state.sound);
-  $("#talkBtn").textContent = state.talking ? "End talk" : "Talk";
+  $("#talkBtn").textContent = state.talking ? t("End talk") : t("Talk");
   $("#talkBtn").classList.toggle("danger", state.talking);
-  $("#recBtn").textContent = state.recording ? "Stop recording" : "Record";
+  $("#recBtn").textContent = state.recording ? t("Stop recording") : t("Record");
   $("#recBtn").classList.toggle("danger", state.recording);
 }
 $("#playBtn").addEventListener("click", async () => {
@@ -503,12 +503,12 @@ $("#playBtn").addEventListener("click", async () => {
     if (state.talking) stopTalk();
     await state.player.stop();
     state.playing = false;
-    setStatus("Video paused");
+    setStatus(t("Video paused"));
   } else {
-    setStatus("Resuming…");
+    setStatus(t("Resuming…"));
     await state.player.play();
     state.playing = true;
-    setStatus("Live");
+    setStatus(t("Live"));
   }
   syncButtons();
 });
@@ -521,54 +521,54 @@ $("#soundBtn").addEventListener("click", async () => {
   if (!state.player) return;
   state.sound = !state.sound;
   try { state.sound ? await state.player.openSound() : await state.player.closeSound(); }
-  catch { state.sound = !state.sound; toast("Could not change sound"); }
+  catch { state.sound = !state.sound; toast(t("Could not change sound")); }
   syncButtons();
 });
 async function stopTalk() {
   try { await state.player.stopTalk(); } catch { /* ignore */ }
   state.talking = false;
   syncButtons();
-  setStatus("Live");
+  setStatus(t("Live"));
 }
 $("#talkBtn").addEventListener("click", async () => {
-  if (!state.player || !state.playing) return toast("Wait for live video before talking");
+  if (!state.player || !state.playing) return toast(t("Wait for live video before talking"));
   if (state.talking) return stopTalk();
   try {
-    setStatus("Starting two-way talk… (allow the microphone if asked)");
+    setStatus(t("Starting two-way talk… (allow the microphone if asked)"));
     await state.player.startTalk();
     state.talking = true;
-    setStatus("Live · Two-way talk active");
+    setStatus(t("Live · Two-way talk active"));
   } catch (e) {
-    setStatus("Two-way talk could not start. " + (e && e.message ? e.message : ""));
+    setStatus(t("Two-way talk could not start. {0}", e && e.message ? e.message : ""));
   }
   syncButtons();
 });
 async function snapshot() {
-  if (!state.player || !state.playing) return toast("Start the video first");
-  try { await state.player.capturePicture(fileStamp()); toast("Snapshot downloaded"); }
-  catch { toast("Snapshot failed"); }
+  if (!state.player || !state.playing) return toast(t("Start the video first"));
+  try { await state.player.capturePicture(fileStamp()); toast(t("Snapshot downloaded")); }
+  catch { toast(t("Snapshot failed")); }
 }
 $("#snapBtn").addEventListener("click", snapshot);
 $("#recSnapBtn").addEventListener("click", snapshot);
 async function toggleRecord() {
-  if (!state.player || !state.playing) return toast("Start the video first");
+  if (!state.player || !state.playing) return toast(t("Start the video first"));
   try {
     if (state.recording) {
       await state.player.stopSave();
       state.recording = false;
-      toast("Recording downloaded");
+      toast(t("Recording downloaded"));
     } else {
       await state.player.startSave(fileStamp());
       state.recording = true;
-      toast("Recording… record at least 5 seconds");
+      toast(t("Recording… record at least 5 seconds"));
     }
-  } catch { toast("Recording failed"); state.recording = false; }
+  } catch { toast(t("Recording failed")); state.recording = false; }
   syncButtons();
 }
 $("#recBtn").addEventListener("click", toggleRecord);
 $("#zoomBtn").addEventListener("click", () => {
   if (state.zoom.scale > 1) resetZoom();
-  else { zoomAt(2); toast("Zoomed 2×. Scroll to zoom, drag to move, press 0 to reset."); }
+  else { zoomAt(2); toast(t("Zoomed 2×. Scroll to zoom, drag to move, press 0 to reset.")); }
 });
 $("#fullBtn").addEventListener("click", toggleFullscreen);
 $("#recFullBtn").addEventListener("click", toggleFullscreen);
@@ -589,7 +589,7 @@ async function searchRecordings() {
   const [y, m, d] = $("#recDate").value.split("-").map(Number);
   const start = Date.UTC(y, m - 1, d);                 // wall-time midnight
   const end = Math.min(wallNow(), start + 86400000 - 1);
-  $("#recMsg").textContent = "Searching the camera's SD card…";
+  $("#recMsg").textContent = t("Searching the camera's SD card…");
   $("#recList").replaceChildren();
   cancelScan();
   try {
@@ -601,14 +601,14 @@ async function searchRecordings() {
     renderRecordings();
     loadThumbs(start, end);
   } catch (e) {
-    $("#recMsg").textContent = "Search failed. " + e.message + " If the camera is asleep, press the doorbell and try again.";
+    $("#recMsg").textContent = t("Search failed. {0} If the camera is asleep, press the doorbell and try again.", e.message);
   }
 }
 function renderRecordings() {
   const list = $("#recList");
   list.replaceChildren();
   const n = state.recFiles.length;
-  $("#recMsg").textContent = n ? `${n} recording${n === 1 ? "" : "s"} · newest first` : "No recordings on the SD card for this day.";
+  $("#recMsg").textContent = n ? (n === 1 ? t("1 recording · newest first") : t("{0} recordings · newest first", n)) : t("No recordings on the SD card for this day.");
   state.recFiles.forEach((f, i) => {
     const thumb = el("div", { class: "thumb" });
     thumb.dataset.key = clipKey(f);
@@ -617,7 +617,7 @@ function renderRecordings() {
     const item = el("button", { class: "item" + (i === state.recIndex ? " playing" : ""), onclick: () => playFile(i) },
       thumb,
       el("div", {}, el("div", { class: "t" }, `${hhmm(f.startTime)} – ${hhmm(f.endTime)}`),
-        el("div", { class: "s" }, dur(f.endTime - f.startTime) + " · SD card")),
+        el("div", { class: "s" }, dur(f.endTime - f.startTime) + " · " + t("SD card"))),
       el("span", { class: "play" }, "▶"));
     list.append(item);
   });
@@ -688,7 +688,7 @@ async function loadThumbs(dayStart, dayEnd) {
   const todo = files.filter((f) => !state.thumbs[clipKey(f)]);
   for (let i = 0; i < todo.length; i++) {
     if (scan !== state.scanId || currentTab() !== "recordings") return;
-    $("#recMsg").textContent = `${files.length} recordings · newest first · preparing previews ${i + 1}/${todo.length}`;
+    $("#recMsg").textContent = t("{0} recordings · newest first · preparing previews {1}/{2}", files.length, i + 1, todo.length);
     const src = await grabFrame(todo[i], scan);
     if (scan !== state.scanId) return;
     if (src) { cacheThumb(clipKey(todo[i]), src); setThumb(clipKey(todo[i]), src); }
@@ -752,24 +752,24 @@ $("#alertsRefresh").addEventListener("click", loadAlerts);
 async function loadAlerts() {
   const grid = $("#alertList");
   grid.replaceChildren();
-  $("#alertsMsg").textContent = "Loading alerts…";
+  $("#alertsMsg").textContent = t("Loading alerts…");
   const end = wallNow();
   try {
     const alarms = (await api("alarmList", {
       startTime: end - 86400000, endTime: end, status: 2, alarmType: -1, pageStart: 0, pageSize: 50,
     })) || [];
     const mine = state.device ? alarms.filter((a) => a.deviceSerial === state.device.deviceSerial) : alarms;
-    $("#alertsMsg").textContent = mine.length ? `${mine.length}${mine.length === 50 ? "+" : ""} events` : "No motion alerts in the last 24 hours.";
+    $("#alertsMsg").textContent = mine.length ? t("{0} events", mine.length + (mine.length === 50 ? "+" : "")) : t("No motion alerts in the last 24 hours.");
     for (const a of mine) {
       const thumb = el("div", { class: "thumb" });
       if (a.alarmPicUrl) thumb.style.backgroundImage = `url("${a.alarmPicUrl}")`;
       grid.append(el("button", { class: "item", onclick: () => openAlert(a) },
         thumb,
-        el("div", { class: "t" }, "Motion detected"),
+        el("div", { class: "t" }, t("Motion detected")),
         el("div", { class: "s" }, wallDateTime(a.alarmTime))));
     }
   } catch (e) {
-    $("#alertsMsg").textContent = "Could not load alerts. " + e.message;
+    $("#alertsMsg").textContent = t("Could not load alerts. {0}", e.message);
   }
 }
 function openAlert(a) {
@@ -779,7 +779,7 @@ function openAlert(a) {
   }
   const pre = Math.max(5, a.preTime || 5) * 1000;
   state.recIndex = -1;
-  playRecording(a.alarmTime - pre - 2000, a.alarmTime + 60000, "for alert at " + hhmmss(a.alarmTime));
+  playRecording(a.alarmTime - pre - 2000, a.alarmTime + 60000, t("for alert at {0}", hhmmss(a.alarmTime)));
 }
 
 /* ---------- settings ---------- */
@@ -791,11 +791,11 @@ async function loadSettings() {
   try {
     const info = await api("deviceInfo", { deviceSerial: sn });
     Object.assign(state.device, { defence: info.defence, status: info.status, deviceName: info.deviceName });
-    $("#setInfo").textContent = `${info.model || "EZVIZ camera"} · ${info.status === 1 ? "Online" : "Offline"}${info.isEncrypt ? " · Video encrypted" : ""}`;
-    $("#defenceInfo").textContent = info.defence === 1 ? "Motion alerts are armed." : "Motion alerts are disarmed.";
-    $("#defenceBtn").textContent = info.defence === 1 ? "Disarm door alerts" : "Arm door alerts";
+    $("#setInfo").textContent = `${info.model || t("EZVIZ camera")} · ${info.status === 1 ? t("Online") : t("Offline")}${info.isEncrypt ? " · " + t("Video encrypted") : ""}`;
+    $("#defenceInfo").textContent = info.defence === 1 ? t("Motion alerts are armed.") : t("Motion alerts are disarmed.");
+    $("#defenceBtn").textContent = info.defence === 1 ? t("Disarm door alerts") : t("Arm door alerts");
     renderDevices();
-  } catch (e) { setMsg("Could not load device settings. " + e.message); }
+  } catch (e) { setMsg(t("Could not load device settings. {0}", e.message)); }
 }
 $("#renameBtn").addEventListener("click", async () => {
   const name = $("#nameInput").value.trim();
@@ -805,38 +805,38 @@ $("#renameBtn").addEventListener("click", async () => {
     state.device.deviceName = name;
     $("#deviceTitle").textContent = name;
     renderDevices();
-    setMsg("Device name updated.");
-  } catch (e) { setMsg("Rename failed. " + e.message); }
+    setMsg(t("Device name updated."));
+  } catch (e) { setMsg(t("Rename failed. {0}", e.message)); }
 });
 $("#defenceBtn").addEventListener("click", async () => {
   if (!state.device) return;
   const next = state.device.defence === 1 ? 0 : 1;
-  if (!confirm(next ? "Arm door alerts on this camera?" : "Disarm door alerts on this camera?")) return;
+  if (!confirm(next ? t("Arm door alerts on this camera?") : t("Disarm door alerts on this camera?"))) return;
   try {
     await api("defenceSet", { deviceSerial: state.device.deviceSerial, isDefence: next });
-    setMsg(next ? "Door alerts armed." : "Door alerts disarmed.");
+    setMsg(next ? t("Door alerts armed.") : t("Door alerts disarmed."));
     loadSettings();
-  } catch (e) { setMsg("Arm/disarm failed. " + e.message); }
+  } catch (e) { setMsg(t("Arm/disarm failed. {0}", e.message)); }
 });
 $("#storageBtn").addEventListener("click", async () => {
   if (!state.device) return;
-  $("#storageInfo").textContent = "Checking…";
-  const names = { 0: "Normal", 1: "Wrong storage medium", 2: "Unformatted", 3: "Formatting" };
+  $("#storageInfo").textContent = t("Checking…");
+  const names = { 0: t("Normal"), 1: t("Wrong storage medium"), 2: t("Unformatted"), 3: t("Formatting") };
   try {
     const data = await api("storageStatus", { deviceSerial: state.device.deviceSerial });
     const items = (data && data.storageStatus) || [];
     $("#storageInfo").textContent = items.length
-      ? items.map((s) => `SD card ${s.index}: ${names[s.status] || "Unknown (" + s.status + ")"}${s.capacity ? ` · ${(s.capacity / 1024).toFixed(0)} GB` : ""}`).join(" · ")
-      : "No storage information returned.";
-  } catch (e) { $("#storageInfo").textContent = "Storage check failed. " + e.message + " If the camera is asleep, wake it and retry."; }
+      ? items.map((s) => t("SD card {0}: {1}", s.index, names[s.status] || t("Unknown ({0})", s.status)) + (s.capacity ? " · " + t("{0} GB", (s.capacity / 1024).toFixed(0)) : "")).join(" · ")
+      : t("No storage information returned.");
+  } catch (e) { $("#storageInfo").textContent = t("Storage check failed. {0} If the camera is asleep, wake it and retry.", e.message); }
 });
 $("#flipBtn").addEventListener("click", async () => {
   if (!state.device) return;
-  if (!confirm("Flip the camera image 180°? This changes the camera's setting.")) return;
+  if (!confirm(t("Flip the camera image 180°? This changes the camera's setting."))) return;
   try {
     await api("mirror", { deviceSerial: state.device.deviceSerial, channelNo: 1, command: 2 });
-    setMsg("Flip command sent. The image may take a moment to update.");
-  } catch (e) { setMsg("Flip failed. " + e.message); }
+    setMsg(t("Flip command sent. The image may take a moment to update."));
+  } catch (e) { setMsg(t("Flip failed. {0}", e.message)); }
 });
 
 /* ---------- SD card reminder ----------
@@ -855,8 +855,10 @@ const DAY = 86400000;
 const FIRST_CHECK_DAYS = 30;
 const dayMs = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d); };
 const isoDay = (ms) => new Date(ms).toISOString().slice(0, 10);
-const longDate = (iso) => new Date(dayMs(iso)).toLocaleDateString([], { dateStyle: "medium", timeZone: "UTC" });
-const minutesText = (ms) => { const m = Math.round(ms / 60000); return m >= 120 ? `${(m / 60).toFixed(1)} hours` : `${m} min`; };
+// Arabic's "medium" date style is all digits; spell the month out instead.
+const longDate = (iso) => new Date(dayMs(iso)).toLocaleDateString(I18N.locale, I18N.lang === "ar"
+  ? { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" } : { dateStyle: "medium", timeZone: "UTC" });
+const minutesText = (ms) => { const m = Math.round(ms / 60000); return m >= 120 ? t("{0} hours", (m / 60).toFixed(1)) : t("{0} min", m); };
 
 /* Recorded time in one day, with overlapping clips merged. */
 function recordedMs(files, from, to) {
@@ -882,14 +884,14 @@ async function findOldestDay(sn, progress) {
   const today = dayMs(todayInput());
   let hit = null, misses = 0;
   for (let back = 0; back <= 400; back += 7) {
-    progress(`Looking for the oldest recording on the card, ${back} days back…`);
+    progress(t("Looking for the oldest recording on the card, {0} days back…", back));
     let n;
     try { n = (await dayRecords(sn, today - back * DAY)).length; } catch { continue; }
     if (n > 0) { hit = back; misses = 0; } else if (++misses >= (hit === null ? 5 : 3)) break;
   }
   if (hit === null) return null;
   for (let back = hit + 6; back > hit; back--) {
-    progress(`Narrowing it down, ${back} days back…`);
+    progress(t("Narrowing it down, {0} days back…", back));
     try { if ((await dayRecords(sn, today - back * DAY)).length) return today - back * DAY; } catch { /* skip */ }
   }
   return today - hit * DAY;
@@ -913,7 +915,7 @@ function loadSdPlan() {
   $("#sdCheck").min = $("#sdStart").value;
   $("#sdCheck").value = (plan && plan.check) || "";
   sdReset();
-  sdMsg(plan && plan.check ? `Reminder saved for ${longDate(plan.check)}.` : "");
+  sdMsg(plan && plan.check ? t("Reminder saved for {0}.", longDate(plan.check)) : "");
   updateSdBanner();
 }
 
@@ -923,22 +925,22 @@ async function checkSd() {
   if (!state.device) return;
   const sn = state.device.deviceSerial;
   const start = $("#sdStart").value;
-  if (!start) { sdMsg("Choose the date the card was emptied."); return; }
+  if (!start) { sdMsg(t("Choose the date the card was emptied.")); return; }
   const btn = $("#sdEstimate");
   btn.disabled = true;
   sdReset();
   try {
-    sdMsg("Reading the card…");
+    sdMsg(t("Reading the card…"));
     const st = await api("storageStatus", { deviceSerial: sn });
     const cards = ((st && st.storageStatus) || []).filter((c) => Number(c.capacity) > 0);
-    if (!cards.length) { sdMsg("The camera didn't report an SD card. Check that a card is inserted, then try again."); return; }
+    if (!cards.length) { sdMsg(t("The camera didn't report an SD card. Check that a card is inserted, then try again.")); return; }
     const capGb = cards.reduce((n, c) => n + Number(c.capacity), 0) / 1024; // capacity is in MB
 
     const today = dayMs(todayInput());
     const startMs = dayMs(start);
     const oldest = await findOldestDay(sn, sdMsg);
 
-    sdMsg("Reading the last 7 days of recordings…");
+    sdMsg(t("Reading the last 7 days of recordings…"));
     let recMs = 0, clips = 0, days = 0;
     for (let i = 1; i <= 7; i++) {
       const from = today - i * DAY;
@@ -946,20 +948,22 @@ async function checkSd() {
       catch { /* skip a day the camera didn't answer */ }
     }
 
-    const lines = [`Card size: <strong>${capGb.toFixed(capGb >= 10 ? 0 : 1)} GB</strong>, status ${cards.every((c) => String(c.status) === "0") ? "normal" : "not normal: check it in Device settings"}.`];
-    if (days) lines.push(`Recorded: about ${minutesText(recMs / days)} of clips a day (${clips} clips in the last ${days} days).`);
+    const lines = [cards.every((c) => String(c.status) === "0")
+      ? t("Card size: <strong>{0} GB</strong>, status normal.", capGb.toFixed(capGb >= 10 ? 0 : 1))
+      : t("Card size: <strong>{0} GB</strong>, status not normal: check it in Device settings.", capGb.toFixed(capGb >= 10 ? 0 : 1))];
+    if (days) lines.push(t("Recorded: about {0} of clips a day ({1} clips in the last {2} days).", minutesText(recMs / days), clips, days));
 
     // Is the camera overwriting? Allow a day of slack for a quiet first day.
     const overwriting = oldest !== null && oldest > startMs + DAY;
     let life = sdLife(sn);
     if (oldest === null) {
-      lines.push("No recordings found on the card.");
+      lines.push(t("No recordings found on the card."));
     } else if (overwriting) {
       const held = Math.round((today - oldest) / DAY);
-      lines.push(`<strong>The card is full and overwriting.</strong> The oldest recording is from ${longDate(isoDay(oldest))}, after the card was emptied on ${longDate(start)}. A full card holds about <strong>${held} days</strong> of recordings, and Liza will use that from now on.`);
+      lines.push(t("<strong>The card is full and overwriting.</strong> The oldest recording is from {0}, after the card was emptied on {1}. A full card holds about <strong>{2} days</strong> of recordings, and Liza will use that from now on.", longDate(isoDay(oldest)), longDate(start), held));
       if (held >= 1) { life = held; setSdLife(sn, held); $("#sdLife").value = held; }
     } else {
-      lines.push(`The oldest recording is from ${longDate(isoDay(oldest))}, so nothing has been overwritten yet.`);
+      lines.push(t("The oldest recording is from {0}, so nothing has been overwritten yet.", longDate(isoDay(oldest))));
     }
 
     let check, full = null;
@@ -970,32 +974,32 @@ async function checkSd() {
       check = isoDay(Math.max(today, startMs + Math.max(1, Math.floor(life * 0.9)) * DAY));
       const pct = Math.min(100, Math.round(((today - startMs) / DAY / life) * 100));
       lines.push(full <= todayInput()
-        ? `A full card lasts about ${life} days, so <strong>it is probably full by now</strong> (around ${longDate(full)}). Check it now.`
-        : `A full card lasts about ${life} days: about <strong>${pct}%</strong> used, full around <strong>${longDate(full)}</strong>. Suggested check: <strong>${longDate(check)}</strong>, a little early in case the camera is busier than usual.`);
+        ? t("A full card lasts about {0} days, so <strong>it is probably full by now</strong> (around {1}). Check it now.", life, longDate(full))
+        : t("A full card lasts about {0} days: about <strong>{1}%</strong> used, full around <strong>{2}</strong>. Suggested check: <strong>{3}</strong>, a little early in case the camera is busier than usual.", life, pct, longDate(full), longDate(check)));
     } else {
       check = isoDay(Math.max(today, startMs + FIRST_CHECK_DAYS * DAY));
-      lines.push(`Liza can't tell how full the card is yet: EZVIZ doesn't report free space, and the space a camera uses isn't proportional to clip length. Enter how many days a full card lasts if you know, or check on <strong>${longDate(check)}</strong>. On that day press this button again: if the camera has started overwriting, Liza measures how many days the card holds and plans from then on.`);
+      lines.push(t("Liza can't tell how full the card is yet: EZVIZ doesn't report free space, and the space a camera uses isn't proportional to clip length. Enter how many days a full card lasts if you know, or check on <strong>{0}</strong>. On that day press this button again: if the camera has started overwriting, Liza measures how many days the card holds and plans from then on.", longDate(check)));
     }
 
     $("#sdResult").innerHTML = lines.map((l) => `<div>${l}</div>`).join("");
     $("#sdResult").hidden = false;
     $("#sdCheck").value = check;
     state.sdEstimate = { start, full, check };
-    sdMsg(overwriting ? "Empty the card, set today as the emptied date, then check again to plan the next reminder." : "Adjust the check date if you like, then save the reminder.");
+    sdMsg(overwriting ? t("Empty the card, set today as the emptied date, then check again to plan the next reminder.") : t("Adjust the check date if you like, then save the reminder."));
   } catch (e) {
-    sdMsg("Check failed. " + e.message + " If the camera is asleep, press the doorbell and try again.");
+    sdMsg(t("Check failed. {0} If the camera is asleep, press the doorbell and try again.", e.message));
   } finally { btn.disabled = false; }
 }
 
 function saveSdReminder() {
   if (!state.device) return null;
   const start = $("#sdStart").value, check = $("#sdCheck").value;
-  if (!start || !check) { sdMsg("Choose both dates first, or press Check the card for a suggestion."); return null; }
-  if (check < start) { sdMsg("The check date must be after the date the card was emptied."); return null; }
+  if (!start || !check) { sdMsg(t("Choose both dates first, or press Check the card for a suggestion.")); return null; }
+  if (check < start) { sdMsg(t("The check date must be after the date the card was emptied.")); return null; }
   const est = state.sdEstimate && state.sdEstimate.start === start ? state.sdEstimate : null;
   const plan = { start, check, full: est ? est.full : null, saved: Date.now() };
   saveSdPlan(state.device.deviceSerial, plan);
-  sdMsg(`Reminder saved for ${longDate(check)}. Liza shows it when you open it on or after that day. Add it to your calendar to be reminded even when Liza is closed.`);
+  sdMsg(t("Reminder saved for {0}. Liza shows it when you open it on or after that day. Add it to your calendar to be reminded even when Liza is closed.", longDate(check)));
   updateSdBanner();
   return plan;
 }
@@ -1003,21 +1007,21 @@ function saveSdReminder() {
 function downloadIcs() {
   const plan = saveSdReminder();
   if (!plan) return;
-  const name = (state.device.deviceName || "camera").replace(/[\r\n]/g, " ");
+  const name = (state.device.deviceName || t("camera")).replace(/[\r\n]/g, " ");
   const esc = (t) => t.replace(/[\\,;]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
   const d = plan.check.replaceAll("-", "");
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const uid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + "@liza.local";
-  const desc = `The SD card in ${name} was emptied on ${longDate(plan.start)}.`
-    + (plan.full ? ` Liza estimated it fills around ${longDate(plan.full)}.` : "")
-    + " When the card is full the camera overwrites its oldest recordings. Open Liza > Device settings > SD card reminder and press Check the card.";
+  const desc = t("The SD card in {0} was emptied on {1}.", name, longDate(plan.start))
+    + (plan.full ? " " + t("Liza estimated it fills around {0}.", longDate(plan.full)) : "")
+    + " " + t("When the card is full the camera overwrites its oldest recordings. Open Liza > Device settings > SD card reminder and press Check the card.");
   const ics = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Liza//SD card reminder//EN", "CALSCALE:GREGORIAN",
     "BEGIN:VEVENT", "UID:" + uid, "DTSTAMP:" + stamp,
     `DTSTART:${d}T090000`, `DTEND:${d}T091500`,
-    "SUMMARY:" + esc(`Check the SD card in ${name}`),
+    "SUMMARY:" + esc(t("Check the SD card in {0}", name)),
     "DESCRIPTION:" + esc(desc),
-    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + esc(`Check the SD card in ${name}`), "TRIGGER:PT0M", "END:VALARM",
+    "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:" + esc(t("Check the SD card in {0}", name)), "TRIGGER:PT0M", "END:VALARM",
     "END:VEVENT", "END:VCALENDAR",
   ].map((l) => l.replace(/(.{74})(?=.)/g, "$1\r\n ")).join("\r\n") + "\r\n"; // fold long lines (RFC 5545)
   const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
@@ -1033,8 +1037,10 @@ function updateSdBanner() {
   const due = !!(plan && plan.check && plan.check <= todayInput());
   $("#sdBanner").hidden = !due;
   if (!due) return;
-  $("#sdBannerText").textContent = `Time to check the SD card in ${state.device.deviceName || "this camera"}. It was emptied on ${longDate(plan.start)}`
-    + (plan.full ? ` and is estimated to fill around ${longDate(plan.full)}.` : ".");
+  const cam = state.device.deviceName || t("this camera");
+  $("#sdBannerText").textContent = plan.full
+    ? t("Time to check the SD card in {0}. It was emptied on {1} and is estimated to fill around {2}.", cam, longDate(plan.start), longDate(plan.full))
+    : t("Time to check the SD card in {0}. It was emptied on {1}.", cam, longDate(plan.start));
 }
 
 function openSdCard() { showTab("settings"); $("#sdCard").scrollIntoView({ behavior: "smooth", block: "start" }); }
@@ -1051,11 +1057,11 @@ $("#sdFind").addEventListener("click", async () => {
   $("#sdFind").disabled = true;
   try {
     const day = await findOldestDay(state.device.deviceSerial, sdMsg);
-    if (day === null) { sdMsg("No recordings found on the card in the last 400 days. If the camera is asleep, press the doorbell and try again."); return; }
+    if (day === null) { sdMsg(t("No recordings found on the card in the last 400 days. If the camera is asleep, press the doorbell and try again.")); return; }
     $("#sdStart").value = isoDay(day);
     $("#sdCheck").min = isoDay(day);
     sdReset();
-    sdMsg(`The oldest recording on the card is from ${longDate(isoDay(day))}. If you emptied the card that day, keep this date and press Check the card.`);
+    sdMsg(t("The oldest recording on the card is from {0}. If you emptied the card that day, keep this date and press Check the card.", longDate(isoDay(day))));
   } finally { $("#sdFind").disabled = false; }
 });
 $("#sdSave").addEventListener("click", saveSdReminder);
@@ -1064,7 +1070,7 @@ $("#sdClear").addEventListener("click", () => {
   if (!state.device) return;
   saveSdPlan(state.device.deviceSerial, null);
   $("#sdCheck").value = "";
-  sdMsg("Reminder removed.");
+  sdMsg(t("Reminder removed."));
   updateSdBanner();
 });
 $("#sdBannerOpen").addEventListener("click", openSdCard);
@@ -1073,14 +1079,14 @@ $("#sdBannerDone").addEventListener("click", () => {
   const sn = state.device.deviceSerial;
   const old = sdPlan(sn);
   // If the card was full when emptied, the time since it was last emptied is (at most) its life.
-  if (old && old.start && confirm("Was the card full when you emptied it? Liza uses the time since it was last emptied to plan the next reminder.")) {
+  if (old && old.start && confirm(t("Was the card full when you emptied it? Liza uses the time since it was last emptied to plan the next reminder."))) {
     const days = Math.round((dayMs(todayInput()) - dayMs(old.start)) / DAY);
     if (days >= 1) setSdLife(sn, days);
   }
   saveSdPlan(sn, { start: todayInput(), check: null, full: null, saved: Date.now() });
   loadSdPlan();
   openSdCard();
-  sdMsg("Marked as emptied today. Press Check the card to plan the next reminder.");
+  sdMsg(t("Marked as emptied today. Press Check the card to plan the next reminder."));
 });
 
 /* ---------- tabs ---------- */
@@ -1119,17 +1125,42 @@ new ResizeObserver(fitPlayer).observe($("#playerWrap"));
 /* Release the camera when the tab is hidden for a while (saves the doorbell's battery). */
 document.addEventListener("visibilitychange", () => {
   clearTimeout(state.hideTimer);
-  if (document.hidden) state.hideTimer = setTimeout(() => { if (document.hidden) { destroyPlayer(); state.mode = "idle"; $("#playerIdle").hidden = false; $("#playerIdle").textContent = "Paused while the tab was hidden. Click Live view to resume."; } }, 60000);
+  if (document.hidden) state.hideTimer = setTimeout(() => { if (document.hidden) { destroyPlayer(); state.mode = "idle"; $("#playerIdle").hidden = false; $("#playerIdle").textContent = t("Paused while the tab was hidden. Click Live view to resume."); } }, 60000);
 });
+
+/* ---------- language ---------- */
+function showLangPick() {
+  destroyPlayer();
+  for (const id of ["#app", "#setup", "#signin"]) $(id).hidden = true;
+  $("#langPick").hidden = false;
+  $(".lang-option").focus();
+}
+$$(".lang-option").forEach((b) => b.addEventListener("click", async () => {
+  store.set("lang", b.dataset.lang);
+  await loadLang(b.dataset.lang);
+  $("#langPick").hidden = true;
+  boot();
+}));
+// Switching later reloads the page, so every message is redrawn in the new language.
+$$(".lang-switch, .lang-set").forEach((b) => b.addEventListener("click", () => {
+  if (b.dataset.lang === I18N.lang) return;
+  store.set("lang", b.dataset.lang);
+  location.reload();
+}));
 
 /* ---------- boot ---------- */
 async function boot() {
+  const lang = store.get("lang", null);
+  if (!lang) return showLangPick();
+  if (lang !== I18N.lang) await loadLang(lang);
+  else applyStatic();
+  syncFullscreenLabels();
   const cfg = await getConfig().catch(() => null);
-  if (!cfg) { document.body.textContent = "Can't reach the Liza server. Is it running?"; return; }
+  if (!cfg) { document.body.textContent = t("Can't reach the Liza server. Is it running?"); return; }
   if (!cfg.configured) return showSetup();
   const s = await fetch("/api/session").then((r) => r.json()).catch(() => ({}));
   if (!s.signedIn) {
-    if (cfg.hasSecret) { showSetup(); $("#setupForm .form-msg").textContent = "EZVIZ didn't accept the saved AppSecret. Check it, or clear it to sign in instead."; return; }
+    if (cfg.hasSecret) { showSetup(); $("#setupForm .form-msg").textContent = t("EZVIZ didn't accept the saved AppSecret. Check it, or clear it to sign in instead."); return; }
     return showSignIn();
   }
   state.session = s;
@@ -1138,8 +1169,8 @@ async function boot() {
   $("#app").hidden = false;
   renderConnInfo();
   $("#sessionInfo").textContent = s.method === "appSecret"
-    ? "Connected with AppSecret · renews automatically"
-    : "Signed in · session until " + new Date(s.expires).toLocaleDateString();
+    ? t("Connected with AppSecret · renews automatically")
+    : t("Signed in · session until {0}", new Date(s.expires).toLocaleDateString(I18N.locale));
   syncButtons();
   await loadDevices();
   const tab = store.get("tab", "live");

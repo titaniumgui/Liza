@@ -35,12 +35,16 @@ Liza/
 │       │   ├── AlertsActivity.java           Last-24-hours alarm list
 │       │   ├── DeviceSettingsActivity.java   Rename, arm/disarm, storage, SD reminder, image
 │       │   ├── SdReminder.java               SD reminder storage, alarm and notification
-│       │   ├── AboutActivity.java            Version and credits
+│       │   ├── AboutActivity.java            Version, credits, language
+│       │   ├── LanguageActivity.java         First-run language choice
+│       │   ├── I18n.java                     tr(), locale and RTL for every screen
 │       │   └── AlarmNotificationJobService.java  Empty placeholder
 │       └── res/
 │           ├── drawable/ic_liza*.xml         Vector "LIZA" logo
 │           ├── mipmap*/ic_launcher.xml       Adaptive launcher icon
+│           ├── raw/ar.json                   Arabic translations, keyed by English text
 │           └── values/colors.xml, styles.xml Dark Material theme
+├── tools/check_i18n.py          Finds untranslated strings (both editions)
 └── docs/                        This documentation
 ```
 
@@ -51,7 +55,7 @@ Source size: about 2,900 lines of Java, more than half of it in `LiveActivity`.
 | Setting | Value |
 |---|---|
 | `applicationId` / `namespace` | `app.liza.android` |
-| `versionName` / `versionCode` | `0.4.0` / `4` |
+| `versionName` / `versionCode` | `0.5.0` / `5` |
 | `compileSdk` / `targetSdk` | 35 |
 | `minSdk` | 23 (Android 6.0, required by the Keystore AES key in `SecureVault`) |
 | Java | Source and target 17 |
@@ -142,6 +146,9 @@ Thin wrappers around SDK calls: `getDeviceInfo`, `setDeviceName`, `setDefence` (
 ### `SdReminder` and the SD card reminder
 EZVIZ reports SD capacity (`GET /api/v3/device/format/status`, called with OkHttp because the SDK's `EZStorageStatus` has no size) but not free space, and SD clips have no file size. Clip length × bitrate was tried and was about 10× too optimistic on a DP2C, so it isn't used. Instead `DeviceSettingsActivity` finds the oldest recording on the card (`searchRecordFileFromDevice`, one day per probe: weekly steps back, then day by day). If it is newer than the day the card was emptied, the card is full and overwriting, and today minus that day is how many days a full card holds. That "life" is saved and drives later check dates (90% of it). `SdReminder` stores the plan, schedules an inexact `AlarmManager` alarm for 9:00 on the check date, posts the notification (`AlarmReceiver`) and reschedules after a reboot (`BootReceiver`). Liza web implements the same logic in `app.js`.
 
+### `I18n` and `LanguageActivity` — languages
+UI text stays in English in the code and goes through `tr("English text", args…)`, which looks it up in `res/raw/ar.json` (with `{0}`, `{1}` placeholders). Every activity overrides `attachBaseContext()` with `I18n.wrap()`, which applies the chosen locale and its layout direction. The manifest sets `supportsRtl`, so Arabic screens mirror. Text views align to the layout's start edge, so Latin-only text sits on the right in Arabic. The video surface and its overlay buttons are not mirrored. Arabic uses `ar-u-nu-latn`, which keeps Western digits. `MainActivity` opens `LanguageActivity` until a language is saved (`liza_settings`/`language`). About can change it, which restarts the task. Run `python tools/check_i18n.py` after changing UI text: it lists missing or unused translations and mismatched placeholders for both editions.
+
 ### `AboutActivity`
 Static screen showing `versionName` from the package manager and credits.
 
@@ -197,7 +204,7 @@ sequenceDiagram
 | Store | Keys / path | Encrypted | Contents |
 |---|---|---|---|
 | `SharedPreferences("liza_secure")` | `app_key`, `region`, `access_token`, `verify_<serial>` | Yes (AES-GCM, Keystore) | Credentials and per-camera verification codes |
-| `SharedPreferences("liza_settings")` | `quality_<serial>`, `sd_autoplay_next` | No | UI preferences |
+| `SharedPreferences("liza_settings")` | `quality_<serial>`, `sd_autoplay_next`, `language` | No | UI preferences and the app language |
 | `SharedPreferences("liza_sd")` | `start_`, `check_`, `full_`, `life_`, `name_`, `notified_<serial>` | No | SD card reminder plan |
 | `cacheDir/record-thumbnails/*.jpg` | Hash of `serial_start_stop` | No | SD clip thumbnails |
 | `getExternalFilesDir(Pictures|Movies)/Liza/` | `Liza-<ms>.jpg/.mp4` | No | Staging copies before publishing |
@@ -251,4 +258,5 @@ browser (public/index.html + app.js)  ──HTTP──▶  server.py on 127.0.0.
 
 - **`server.py`** (Python standard library only) handles the first-run config (`/api/config`), the session (`/api/session`), and sign-in. Sign-in uses either AppKey + AppSecret (`/api/lapp/token/get` on the region's server) or EZVIZ's OAuth page with the pasted-back address (`/auth/start`, `/auth/paste`). It forwards a fixed set of Open API calls (`/api/ezviz/<name>`), including v3 GET calls with header auth, and serves `public/` and `vendor/`.
 - **`app.js`** holds the UI state, quality levels (from the player's `videoLevelList`), Liza's own CSS zoom and pan, full screen with a window-filling fallback, the stall guard, SD search and playback, alert playback, and the thumbnail pipeline (alert snapshot, cache, or hidden-player frame grab with `capturePicture(name, false, false)`).
+- **`i18n.js`** provides `t("English text", args…)`, translates the `data-i18n*` elements in `index.html`, and maps the server's English error messages through `tServer()`. Arabic lives in `public/i18n/ar.json` and sets `dir="rtl"` on the page, while the player keeps `dir="ltr"`. The language is stored in the browser (`liza.lang`). Until it is set, `boot()` shows the language window.
 - **Live URLs**: `ezopen://open.ezviz.com/<serial>/1[.hd].live`. **Playback**: `…/1.rec?begin=YYYYMMDDHHmmss&end=…`, with times as camera wall-clock time.

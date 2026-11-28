@@ -31,11 +31,17 @@ You need:
 
 ## Install the APK
 
-1. Download `Liza-0.4.0.apk` from the repository's **Releases** page.
+1. Download `Liza-0.5.0.apk` from the repository's **Releases** page.
 2. Open it on your phone. Android will ask you to allow installs from your browser or file manager; allow it for that app only.
 3. Tap **Install**.
 
 From 0.4.0 the APK is a signed release build. Versions up to 0.3.0 were debug-signed: Android won't update those to a release build, so **uninstall the old Liza first**. You'll need to enter your AppKey and sign in again.
+
+## Language
+
+The first time you open Liza, it asks for your language: **English** or **العربية** (Arabic). In Arabic the whole app is right-to-left, except the video and its controls, which stay as they are. Dates keep Western digits so they match the camera's timestamps.
+
+To change it later, open **About** (the **i** button) and tap the other language. Liza restarts in that language. Your sign-in and settings are kept.
 
 ## First-time setup
 
@@ -173,7 +179,7 @@ Battery level, working mode, chime and speaker volume, screen and light settings
 
 <img src="screenshots/03-about.png" width="280" alt="About Liza screen showing version 0.3.0">
 
-Shows the installed version and credits. Tap **Done** to return.
+Shows the installed version, credits and the **Language** choice (English or العربية). Tap **Done** to return.
 
 ## Where your photos and videos go
 

@@ -14,6 +14,7 @@ public final class LizaApplication extends Application {
         super.onCreate();
         // Application's base Context is not attached during field initialization.
         // Construct the preferences-backed store only after super.onCreate().
+        I18n.init(this);
         vault = new SecureVault(this);
         configureIfReady();
         // Re-arm SD card reminders (alarms are lost on app update or force-stop).

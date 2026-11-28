@@ -1,5 +1,7 @@
 package app.liza.android;
 
+import static app.liza.android.I18n.tr;
+
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -28,6 +30,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class AlertsActivity extends Activity {
+    @Override protected void attachBaseContext(android.content.Context base) { super.attachBaseContext(I18n.wrap(base)); }
+
     private static final int BG = Color.rgb(12, 17, 25);
     private static final int PANEL = Color.rgb(23, 31, 43);
     private static final int MUTED = Color.rgb(158, 172, 191);
@@ -60,25 +64,25 @@ public final class AlertsActivity extends Activity {
         page.setPadding(dp(20), dp(18), dp(20), dp(28));
         page.setBackgroundColor(BG);
 
-        Button back = button("‹  Back", PANEL, Color.WHITE);
-        back.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
-        back.setContentDescription("Back to devices");
+        Button back = button(tr("‹  Back"), PANEL, Color.WHITE);
+        back.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        back.setContentDescription(tr("Back to devices"));
         back.setOnClickListener(v -> finish());
         page.addView(back, size(-1, 48));
 
-        TextView title = text("Motion alerts", 28, Color.WHITE, true);
+        TextView title = text(tr("Motion alerts"), 28, Color.WHITE, true);
         page.addView(title, top(20));
-        TextView subtitle = text("Events from the last 24 hours", 14, MUTED, false);
+        TextView subtitle = text(tr("Events from the last 24 hours"), 14, MUTED, false);
         page.addView(subtitle, top(4));
 
-        status = text("Loading alerts…", 14, MUTED, false);
+        status = text(tr("Loading alerts…"), 14, MUTED, false);
         page.addView(status, top(20));
 
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         page.addView(list, top(4));
 
-        Button refresh = button("Refresh alerts", ACCENT, BG);
+        Button refresh = button(tr("Refresh alerts"), ACCENT, BG);
         refresh.setOnClickListener(v -> loadAlerts());
         page.addView(refresh, top(18, 50));
         scroll.addView(page);
@@ -87,10 +91,10 @@ public final class AlertsActivity extends Activity {
 
     private void loadAlerts() {
         if (!app.configureIfReady() || app.vault().get("access_token") == null) {
-            showMessage("Sign in to EZVIZ from the home screen to view alerts.");
+            showMessage(tr("Sign in to EZVIZ from the home screen to view alerts."));
             return;
         }
-        status.setText("Loading alerts…");
+        status.setText(tr("Loading alerts…"));
         list.removeAllViews();
         Calendar end = Calendar.getInstance();
         Calendar start = (Calendar) end.clone();
@@ -100,9 +104,9 @@ public final class AlertsActivity extends Activity {
                 List<EZAlarmInfo> alarms = EZGlobalSDK.getInstance().getAlarmList(null, 0, 50, start, end);
                 runOnUiThread(() -> showAlerts(alarms));
             } catch (BaseException e) {
-                runOnUiThread(() -> showMessage("Could not load alerts (EZVIZ error " + e.getErrorCode() + ")."));
+                runOnUiThread(() -> showMessage(tr("Could not load alerts (EZVIZ error {0}).", e.getErrorCode())));
             } catch (Exception e) {
-                runOnUiThread(() -> showMessage("Alert request failed. Check your connection and try again."));
+                runOnUiThread(() -> showMessage(tr("Alert request failed. Check your connection and try again.")));
             }
         });
     }
@@ -110,22 +114,22 @@ public final class AlertsActivity extends Activity {
     private void showAlerts(List<EZAlarmInfo> alarms) {
         list.removeAllViews();
         if (alarms == null || alarms.isEmpty()) {
-            showMessage("No motion alerts in the last 24 hours.");
+            showMessage(tr("No motion alerts in the last 24 hours."));
             return;
         }
-        status.setText(alarms.size() + (alarms.size() == 50 ? "+ events" : " events"));
+        status.setText(tr("{0} events", alarms.size() + (alarms.size() == 50 ? "+" : "")));
         for (EZAlarmInfo alarm : alarms) {
             String source = alarm.getDeviceName();
             if (source == null || source.trim().isEmpty()) source = alarm.getDeviceSerial();
-            if (source == null || source.trim().isEmpty()) source = "Your camera";
+            if (source == null || source.trim().isEmpty()) source = tr("Your camera");
             String event = alarm.getAlarmName();
-            if (event == null || event.trim().isEmpty() || event.equals(source)) event = "Motion detected";
+            if (event == null || event.trim().isEmpty() || event.equals(source)) event = tr("Motion detected");
             String time = alarm.getAlarmStartTime();
 
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.HORIZONTAL);
             card.setGravity(Gravity.CENTER_VERTICAL);
-            card.setPadding(dp(12), dp(12), dp(14), dp(12));
+            card.setPaddingRelative(dp(12), dp(12), dp(14), dp(12));
             card.setBackground(rounded(PANEL, 18));
             ImageView thumbnail = new ImageView(this);
             thumbnail.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -141,10 +145,12 @@ public final class AlertsActivity extends Activity {
             deviceText.setMaxLines(1);
             deviceText.setEllipsize(android.text.TextUtils.TruncateAt.END);
             details.addView(deviceText, top(4));
-            TextView timeText = text(time == null ? "Time unavailable" : time, 12, MUTED, false);
+            TextView timeText = text(time == null ? tr("Time unavailable") : time, 12, MUTED, false);
+            // EZVIZ sends "yyyy-MM-dd HH:mm:ss"; keep it left-to-right inside Arabic layouts.
+            timeText.setTextDirection(android.view.View.TEXT_DIRECTION_LTR);
             details.addView(timeText, top(6));
             LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(0, -2, 1f);
-            detailsParams.leftMargin = dp(12);
+            detailsParams.setMarginStart(dp(12)); // flips with the layout in Arabic
             card.addView(details, detailsParams);
             TextView arrow = text("›", 28, MUTED, false);
             card.addView(arrow, size(dp(24), -2));
@@ -196,6 +202,7 @@ public final class AlertsActivity extends Activity {
     }
     private TextView text(String value, int size, int color, boolean bold) {
         TextView t = new TextView(this);
+        t.setTextAlignment(android.view.View.TEXT_ALIGNMENT_VIEW_START);
         t.setText(value);
         t.setTextSize(size);
         t.setTextColor(color);

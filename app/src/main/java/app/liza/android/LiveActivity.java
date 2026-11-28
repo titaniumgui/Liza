@@ -1,5 +1,7 @@
 package app.liza.android;
 
+import static app.liza.android.I18n.tr;
+
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -69,6 +71,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class LiveActivity extends Activity implements TextureView.SurfaceTextureListener {
+    @Override protected void attachBaseContext(android.content.Context base) { super.attachBaseContext(I18n.wrap(base)); }
+
     private static final int BG = Color.rgb(12, 17, 25);
     private static final int PANEL = Color.rgb(23, 31, 43);
     private static final int MUTED = Color.rgb(158, 172, 191);
@@ -96,9 +100,9 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         sdSearchDialog.dismiss();
         sdSearchDialog = null;
         resetSdSearchButton();
-        String message = "The camera did not respond to the SD card search. Check that it is online and try again.";
+        String message = tr("The camera did not respond to the SD card search. Check that it is online and try again.");
         state.setText(message);
-        new AlertDialog.Builder(this).setTitle("Search timed out")
+        new AlertDialog.Builder(this).setTitle(tr("Search timed out"))
                 .setMessage(message).setPositiveButton("OK", null).show();
         startLive();
     }
@@ -115,6 +119,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
     private boolean playing;
     private boolean talking;
     private boolean recording;
+    private boolean savingRecording; // a finished recording is being copied to Movies/Liza
     private boolean playbackMode;
     private boolean gotVideoSize;
     private boolean pendingTalk;
@@ -191,7 +196,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
     private final Handler playerHandler = new Handler(Looper.getMainLooper(), this::handlePlayerMessage);
     private final Runnable firstFrameTimeout = () -> {
         if (playing && !playbackMode && !gotVideoSize) {
-            retryAlternateRoute("The camera connected but sent no video frames.");
+            retryAlternateRoute(tr("The camera connected but sent no video frames."));
         }
     };
 
@@ -238,9 +243,9 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(18), dp(18), dp(18), dp(22));
         page.setBackgroundColor(BG);
-        TextView title = text(deviceName == null ? "Front door" : deviceName, 23, Color.WHITE, true);
+        TextView title = text(deviceName == null ? tr("Front door") : deviceName, 23, Color.WHITE, true);
         page.addView(title);
-        state = text("Starting live view…", 13, MUTED, false);
+        state = text(tr("Starting live view…"), 13, MUTED, false);
         page.addView(state, top(5));
 
         videoFrame = new FrameLayout(this);
@@ -265,21 +270,21 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         int availableWidth = getResources().getDisplayMetrics().widthPixels - dp(36);
         previewHeight = Math.max(dp(180), Math.round(availableWidth * 9f / 16f));
         videoFrame.addView(surface, new FrameLayout.LayoutParams(-1, -1));
-        fullscreenButton = button("Full screen", PANEL, Color.WHITE);
+        fullscreenButton = button(tr("Full screen"), PANEL, Color.WHITE);
         fullscreenButton.setTextSize(12);
         fullscreenButton.setPadding(dp(14), 0, dp(14), 0);
         fullscreenButton.setOnClickListener(v -> setFullscreen(!fullscreen));
         FrameLayout.LayoutParams fullButtonParams = new FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP | Gravity.RIGHT);
         fullButtonParams.setMargins(0, dp(12), dp(12), 0);
         videoFrame.addView(fullscreenButton, fullButtonParams);
-        qualityButton = button("Quality · " + qualityName(videoQuality), PANEL, Color.WHITE);
+        qualityButton = button(tr("Quality · {0}", qualityName(videoQuality)), PANEL, Color.WHITE);
         qualityButton.setTextSize(12);
         qualityButton.setPadding(dp(12), 0, dp(12), 0);
         qualityButton.setOnClickListener(v -> showVideoQualityMenu());
         FrameLayout.LayoutParams qualityParams = new FrameLayout.LayoutParams(-2, dp(40), Gravity.TOP | Gravity.LEFT);
         qualityParams.setMargins(dp(12), dp(12), 0, 0);
         videoFrame.addView(qualityButton, qualityParams);
-        audioButton = button("Audio on", PANEL, Color.WHITE);
+        audioButton = button(tr("Audio on"), PANEL, Color.WHITE);
         audioButton.setTextSize(12);
         audioButton.setPadding(dp(12), 0, dp(12), 0);
         audioButton.setOnClickListener(v -> toggleLiveAudio());
@@ -318,27 +323,27 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         playbackControls.setVisibility(View.GONE);
         page.addView(playbackControls, top(-8));
 
-        playButton = button("Pause video", PANEL, Color.WHITE);
+        playButton = button(tr("Pause video"), PANEL, Color.WHITE);
         playButton.setOnClickListener(v -> togglePlayback());
         page.addView(playButton, height(48));
 
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
-        talkButton = button("Talk", PANEL, Color.WHITE);
+        talkButton = button(tr("Talk"), PANEL, Color.WHITE);
         talkButton.setOnClickListener(v -> toggleTalk());
-        recordButton = button("Record", PANEL, Color.WHITE);
+        recordButton = button(tr("Record"), PANEL, Color.WHITE);
         recordButton.setOnClickListener(v -> toggleRecord());
-        Button capture = button("Capture", PANEL, Color.WHITE);
+        Button capture = button(tr("Capture"), PANEL, Color.WHITE);
         capture.setOnClickListener(v -> capture());
         addEqual(row, talkButton);
         addEqual(row, recordButton);
         addEqual(row, capture);
         page.addView(row, top(10));
 
-        browseSdButton = button("Browse SD card recordings", ACCENT, BG);
+        browseSdButton = button(tr("Browse SD card recordings"), ACCENT, BG);
         browseSdButton.setOnClickListener(v -> {
-            state.setText("Connecting to the camera’s SD card…");
+            state.setText(tr("Connecting to the camera’s SD card…"));
             browseRecordings();
         });
         page.addView(browseSdButton, top(10));
@@ -383,13 +388,13 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 if (videoZoom > 1f) scheduleVideoZoomUpdate();
                 else player.setDisplayRegion(-1L, -1L, -1L, -1L);
             }
-            state.setText(started ? "Connecting to camera…" : "The EZVIZ SDK could not start live view. Tap Resume video to retry.");
-            playButton.setText(started ? "Pause video" : "Resume video");
+            state.setText(started ? tr("Connecting to camera…") : tr("The EZVIZ SDK could not start live view. Tap Resume video to retry."));
+            playButton.setText(started ? tr("Pause video") : tr("Resume video"));
             playbackControls.setVisibility(View.GONE);
             qualityButton.setVisibility(View.VISIBLE);
             audioButton.setVisibility(View.VISIBLE);
         } catch (Exception e) {
-            state.setText("Could not start video: " + e.getMessage());
+            state.setText(tr("Could not start video: {0}", e.getMessage()));
         }
     }
 
@@ -397,7 +402,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         if (message.what == EZRealPlayConstants.MSG_REALPLAY_PLAY_SUCCESS) {
             if (thumbnailScanActive) return true;
             if (playbackMode) {
-                state.setText("Playing recording…");
+                state.setText(tr("Playing recording…"));
                 if (pendingPlaybackSeekAt > 0) {
                     long target = pendingPlaybackSeekAt;
                     pendingPlaybackSeekAt = -1;
@@ -408,9 +413,9 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                     }, 500);
                 }
             }
-            else if (gotVideoSize) state.setText("Live · " + serial);
+            else if (gotVideoSize) state.setText(tr("Live · {0}", serial));
             else {
-                state.setText("Live · waiting for video…");
+                state.setText(tr("Live · waiting for video…"));
                 main.removeCallbacks(firstFrameTimeout);
                 main.postDelayed(firstFrameTimeout, 10000);
                 if (pendingTalk) beginTalk();
@@ -428,8 +433,8 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 }
                 return true;
             }
-            state.setText((playbackMode ? "Playing recording" : "Live · " + serial)
-                    + (talking ? " · Two-way talk active" : "") + " · " + String.valueOf(message.obj));
+            state.setText((playbackMode ? tr("Playing recording") : tr("Live · {0}", serial))
+                    + (talking ? " · " + tr("Two-way talk active") : "") + " · " + String.valueOf(message.obj));
             if (playbackMode && currentSdFile != null) cacheCurrentThumbnail();
             surface.post(this::updateVideoSurfaceLayout);
             if (videoZoom > 1f) scheduleVideoZoomUpdate();
@@ -449,27 +454,27 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 if (encrypted && (error.errorCode == 400035 || error.errorCode == 400036)) {
                     askVerifyCode();
                 } else {
-                    if (!retryAlternateRoute("EZVIZ stream error " + error.errorCode + "."))
-                        state.setText("Video error " + error.errorCode + ": " + error.description);
+                    if (!retryAlternateRoute(tr("EZVIZ stream error {0}.", error.errorCode)))
+                        state.setText(tr("Video error {0}: {1}", error.errorCode, error.description));
                 }
-            } else if (!retryAlternateRoute("Could not start the camera stream.")) state.setText("Could not start the camera stream.");
+            } else if (!retryAlternateRoute(tr("Could not start the camera stream."))) state.setText(tr("Could not start the camera stream."));
             return true;
         }
         if (message.what == EZRealPlayConstants.MSG_REALPLAY_VOICETALK_SUCCESS) {
             talking = true;
             talkStopping = false;
             talkButton.setEnabled(true);
-            talkButton.setText("End talk");
-            state.setText("Live · " + serial + " · Two-way talk active");
+            talkButton.setText(tr("End talk"));
+            state.setText(tr("Live · {0}", serial) + " · " + tr("Two-way talk active"));
             return true;
         }
         if (message.what == EZRealPlayConstants.MSG_REALPLAY_VOICETALK_FAIL) {
-            state.setText("Two-way audio could not start. Live video is still active.");
+            state.setText(tr("Two-way audio could not start. Live video is still active."));
             finishTalkSession();
             return true;
         }
         if (message.what == EZRealPlayConstants.MSG_REALPLAY_VOICETALK_STOP) {
-            state.setText("Live · " + serial);
+            state.setText(tr("Live · {0}", serial));
             finishTalkSession();
             return true;
         }
@@ -480,7 +485,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         LizaApplication app = (LizaApplication) getApplication();
         if (routeRetryUsed || playbackMode || !surfaceReady || app.isP2pEnabled()) return false;
         routeRetryUsed = true;
-        state.setText(reason + " Retrying direct connection…");
+        state.setText(reason + " " + tr("Retrying direct connection…"));
         main.removeCallbacks(firstFrameTimeout);
         playing = false;
         try { if (livePlayer != null) { livePlayer.stopRealPlay(); livePlayer.release(); } } catch (Exception ignored) { }
@@ -494,22 +499,22 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
     private void askVerifyCode() {
         EditText input = new EditText(this);
         input.setSingleLine(true);
-        input.setHint("6-character device verification code");
+        input.setHint(tr("6-character device verification code"));
         new AlertDialog.Builder(this)
-            .setTitle("Unlock camera video")
-            .setMessage("Enter the verification code printed on your DP2C label.")
+            .setTitle(tr("Unlock camera video"))
+            .setMessage(tr("Enter the verification code printed on your DP2C label."))
             .setView(input)
-            .setNegativeButton("Cancel", (d, w) -> state.setText("Video is encrypted; verification code is required."))
-            .setPositiveButton("Continue", (d, w) -> {
+            .setNegativeButton(tr("Cancel"), (d, w) -> state.setText(tr("Video is encrypted; verification code is required.")))
+            .setPositiveButton(tr("Continue"), (d, w) -> {
                 String code = input.getText().toString().trim();
-                if (code.length() < 4) { state.setText("Check the verification code and try again."); return; }
+                if (code.length() < 4) { state.setText(tr("Check the verification code and try again.")); return; }
                 try {
                     new SecureVault(this).put("verify_" + serial, code);
                     player.setPlayVerifyCode(code);
                     player.startRealPlay();
                     playing = true;
-                    state.setText("Retrying live view…");
-                } catch (Exception e) { state.setText("Could not save or apply the verification code."); }
+                    state.setText(tr("Retrying live view…"));
+                } catch (Exception e) { state.setText(tr("Could not save or apply the verification code.")); }
             }).show();
     }
 
@@ -526,20 +531,20 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             videoFrame.getLayoutParams().height = fullscreen ? fullscreenVideoHeight() : previewHeight;
             videoFrame.requestLayout();
             player = livePlayer;
-            playButton.setText("Resume video");
+            playButton.setText(tr("Resume video"));
             startLive();
         } else if (playing && livePlayer != null) {
             stopLocalRecordingIfNeeded();
             try { livePlayer.stopRealPlay(); } catch (Exception ignored) { }
             playing = false;
-            playButton.setText("Resume video");
-            state.setText("Video paused");
+            playButton.setText(tr("Resume video"));
+            state.setText(tr("Video paused"));
         } else startLive();
     }
 
     private void toggleTalk() {
         if (!talking && (livePlayer == null || !playing)) {
-            Toast.makeText(this, "Wait for live video before starting talk", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("Wait for live video before starting talk"), Toast.LENGTH_SHORT).show();
             return;
         }
         if (android.os.Build.VERSION.SDK_INT >= 23
@@ -553,7 +558,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 if (!talkStopping) {
                     talkStopping = true;
                     talkButton.setEnabled(false);
-                    state.setText("Ending talk…");
+                    state.setText(tr("Ending talk…"));
                     if (talkPlayer != null) talkPlayer.stopVoiceTalk();
                     main.postDelayed(() -> {
                         if (talkStopping) finishTalkSession();
@@ -561,7 +566,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 }
             } else beginTalk();
         } catch (Exception e) {
-            state.setText("Two-way audio failed: " + e.getMessage());
+            state.setText(tr("Two-way audio failed: {0}", e.getMessage()));
             finishTalkSession();
         }
     }
@@ -575,13 +580,13 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             if (livePlayer != null) livePlayer.closeSound();
             if (talkPlayer == null) talkPlayer = createTalkPlayer();
             boolean started = talkPlayer.startVoiceTalk();
-            if (started) state.setText("Live video continues · starting two-way talk…");
+            if (started) state.setText(tr("Live video continues · starting two-way talk…"));
             else {
-                state.setText("EZVIZ could not start two-way audio. Live video is still active.");
+                state.setText(tr("EZVIZ could not start two-way audio. Live video is still active."));
                 finishTalkSession();
             }
         } catch (Exception e) {
-            state.setText("Two-way audio failed: " + e.getMessage());
+            state.setText(tr("Two-way audio failed: {0}", e.getMessage()));
             finishTalkSession();
         }
     }
@@ -591,18 +596,18 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         talking = false;
         pendingTalk = false;
         talkButton.setEnabled(true);
-        talkButton.setText("Talk");
+        talkButton.setText(tr("Talk"));
         playButton.setEnabled(true);
         try { if (talkPlayer != null) talkPlayer.release(); } catch (Exception ignored) { }
         talkPlayer = null;
         try { if (livePlayer != null) { if (liveAudioEnabled) livePlayer.openSound(); else livePlayer.closeSound(); } } catch (Exception ignored) { }
         player = livePlayer;
-        if (playing && !playbackMode) state.setText("Live · " + serial);
+        if (playing && !playbackMode) state.setText(tr("Live · {0}", serial));
     }
 
     private EZPlayer createTalkPlayer() {
         EZPlayer created = EZGlobalSDK.getInstance().createPlayer(serial, cameraNo);
-        if (created == null) throw new IllegalStateException("EZVIZ could not create a talk player");
+        if (created == null) throw new IllegalStateException(tr("EZVIZ could not create a talk player"));
         created.setHandler(playerHandler);
         created.setAudioOnly(true);
         String verifyCode = new SecureVault(this).get("verify_" + serial);
@@ -618,7 +623,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 else if (playing) beginTalk();
             } else {
                 pendingTalk = false;
-                state.setText("Microphone permission is needed for two-way audio.");
+                state.setText(tr("Microphone permission is needed for two-way audio."));
             }
         } else if (requestCode == 41) {
             int action = pendingStorageAction;
@@ -626,43 +631,45 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
                 if (action == 1) capture();
                 else if (action == 2) toggleRecord();
-            } else state.setText("Storage access is needed to save media to Photos.");
+            } else state.setText(tr("Storage access is needed to save media to Photos."));
         }
     }
 
     private void toggleRecord() {
         if (!recording && !ensureMediaPermission(2)) return;
         if (player == null || !playing || playbackMode) {
-            Toast.makeText(this, "Start live video before recording", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("Start live video before recording"), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             if (recording) {
                 player.stopLocalRecord();
                 recording = false;
-                recordButton.setText("Record");
-                state.setText("Saving recording to Movies/Liza…");
+                recordButton.setText(tr("Record"));
+                savingRecording = true;
+                state.setText(tr("Saving recording to Movies/Liza…"));
                 publishMediaFile(new File(recordingPath), "Liza-" + System.currentTimeMillis() + ".mp4", "video/mp4", "Movies/Liza");
             } else {
                 File movieRoot = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
                 if (movieRoot == null) movieRoot = getFilesDir();
                 File folder = new File(movieRoot, "Liza");
-                if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException("Cannot create recording folder");
+                if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException(tr("Cannot create recording folder"));
                 recordingPath = new File(folder, "Liza-" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
                 recording = player.startLocalRecordWithFile(recordingPath);
-                recordButton.setText(recording ? "Stop recording" : "Record");
-                state.setText(recording ? "Recording video…" : "Recording did not start");
+                recordButton.setText(recording ? tr("Stop recording") : tr("Record"));
+                state.setText(recording ? tr("Recording video…") : tr("Recording did not start"));
             }
-        } catch (Exception e) { state.setText("Recording failed: " + e.getMessage()); }
+        } catch (Exception e) { state.setText(tr("Recording failed: {0}", e.getMessage())); }
     }
 
     private void stopLocalRecordingIfNeeded() {
         if (!recording) return;
         try { if (livePlayer != null) livePlayer.stopLocalRecord(); } catch (Exception ignored) { }
         recording = false;
-        recordButton.setText("Record");
+        recordButton.setText(tr("Record"));
         if (recordingPath != null) {
-            state.setText("Saving recording to Movies/Liza…");
+            savingRecording = true;
+                state.setText(tr("Saving recording to Movies/Liza…"));
             publishMediaFile(new File(recordingPath), "Liza-" + System.currentTimeMillis() + ".mp4", "video/mp4", "Movies/Liza");
         }
     }
@@ -671,7 +678,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         if (!ensureMediaPermission(1)) return;
         EZPlayer capturePlayer = livePlayer;
         if (capturePlayer == null || !playing || playbackMode || talking) {
-            Toast.makeText(this, "Start live video before taking a snapshot", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("Start live video before taking a snapshot"), Toast.LENGTH_SHORT).show();
             return;
         }
         worker.execute(() -> {
@@ -679,14 +686,14 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 File pictureRoot = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
                 if (pictureRoot == null) pictureRoot = getFilesDir();
                 File folder = new File(pictureRoot, "Liza");
-                if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException("Cannot create photo folder");
+                if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException(tr("Cannot create photo folder"));
                 String name = "Liza-" + System.currentTimeMillis() + ".jpg";
                 File photo = new File(folder, name);
                 String path = photo.getAbsolutePath();
                 int code = capturePlayer.capturePicture(path);
-                if (code != 0 || !photo.isFile()) throw new IllegalStateException("EZVIZ could not create the snapshot (" + code + ")");
+                if (code != 0 || !photo.isFile()) throw new IllegalStateException(tr("EZVIZ could not create the snapshot ({0})", code));
                 publishMediaFile(photo, name, "image/jpeg", "Pictures/Liza");
-            } catch (Exception e) { main.post(() -> Toast.makeText(this, "Snapshot failed: " + e.getMessage(), Toast.LENGTH_LONG).show()); }
+            } catch (Exception e) { main.post(() -> Toast.makeText(this, tr("Snapshot failed: {0}", e.getMessage()), Toast.LENGTH_LONG).show()); }
         });
     }
 
@@ -719,7 +726,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                         Thread.sleep(350);
                     }
                 }
-                if (!source.isFile() || source.length() == 0) throw new IllegalStateException("The media file did not finish saving");
+                if (!source.isFile() || source.length() == 0) throw new IllegalStateException(tr("The media file did not finish saving"));
                 if (android.os.Build.VERSION.SDK_INT >= 29) {
                     Uri collection = mime.startsWith("image/")
                             ? MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -730,9 +737,9 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                     values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativeFolder);
                     values.put(MediaStore.MediaColumns.IS_PENDING, 1);
                     inserted = getContentResolver().insert(collection, values);
-                    if (inserted == null) throw new IllegalStateException("The media library declined the file");
+                    if (inserted == null) throw new IllegalStateException(tr("The media library declined the file"));
                     try (InputStream in = new FileInputStream(source); OutputStream out = getContentResolver().openOutputStream(inserted, "w")) {
-                        if (out == null) throw new IllegalStateException("Could not open the media library file");
+                        if (out == null) throw new IllegalStateException(tr("Could not open the media library file"));
                         copy(in, out);
                     }
                     ContentValues ready = new ContentValues();
@@ -741,22 +748,21 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 } else {
                     String publicType = relativeFolder.startsWith("Pictures") ? Environment.DIRECTORY_PICTURES : Environment.DIRECTORY_MOVIES;
                     File folder = new File(Environment.getExternalStoragePublicDirectory(publicType), "Liza");
-                    if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException("Could not create the Photos folder");
+                    if (!folder.exists() && !folder.mkdirs()) throw new IllegalStateException(tr("Could not create the Photos folder"));
                     File destination = new File(folder, name);
                     try (InputStream in = new FileInputStream(source); OutputStream out = new FileOutputStream(destination)) { copy(in, out); }
                     MediaScannerConnection.scanFile(this, new String[]{destination.getAbsolutePath()}, new String[]{mime}, null);
                 }
                 main.post(() -> {
-                    if (mime.startsWith("video/") && state.getText().toString().startsWith("Saving recording"))
-                        state.setText("Recording saved to Movies/Liza");
-                    if (mime.startsWith("image/")) state.setText("Photo saved to Pictures/Liza");
-                    Toast.makeText(this, (mime.startsWith("image/") ? "Photo" : "Video") + " saved to " + relativeFolder, Toast.LENGTH_LONG).show();
+                    if (mime.startsWith("video/") && savingRecording) { savingRecording = false; state.setText(tr("Recording saved to Movies/Liza")); }
+                    if (mime.startsWith("image/")) state.setText(tr("Photo saved to Pictures/Liza"));
+                    Toast.makeText(this, mime.startsWith("image/") ? tr("Photo saved to {0}", relativeFolder) : tr("Video saved to {0}", relativeFolder), Toast.LENGTH_LONG).show();
                 });
             } catch (Exception e) {
                 if (inserted != null) try { getContentResolver().delete(inserted, null, null); } catch (Exception ignored) { }
                 main.post(() -> {
-                    String message = "Could not save media to Photos: " + e.getMessage();
-                    if (mime.startsWith("video/") && state.getText().toString().startsWith("Saving recording")) state.setText("Recording save failed");
+                    String message = tr("Could not save media to Photos: {0}", e.getMessage());
+                    if (mime.startsWith("video/") && savingRecording) { savingRecording = false; state.setText(tr("Recording save failed")); }
                     Toast.makeText(this, message, Toast.LENGTH_LONG).show();
                 });
             }
@@ -776,15 +782,15 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
 
     private void searchRecordingsForDate(Calendar selectedDay) {
         if (!surfaceReady || serial == null) {
-            state.setText("Camera view is not ready yet. Try again in a moment.");
-            Toast.makeText(this, "Camera view is not ready yet", Toast.LENGTH_SHORT).show();
+            state.setText(tr("Camera view is not ready yet. Try again in a moment."));
+            Toast.makeText(this, tr("Camera view is not ready yet"), Toast.LENGTH_SHORT).show();
             return;
         }
         try {
             if (livePlayer == null) livePlayer = createPlayer();
         } catch (Exception e) {
-            state.setText("Could not prepare the camera for SD card search.");
-            Toast.makeText(this, "Could not prepare the camera", Toast.LENGTH_LONG).show();
+            state.setText(tr("Could not prepare the camera for SD card search."));
+            Toast.makeText(this, tr("Could not prepare the camera"), Toast.LENGTH_LONG).show();
             return;
         }
         stopLocalRecordingIfNeeded();
@@ -800,16 +806,16 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         sdSearchDate.set(Calendar.MILLISECOND, 0);
         player = livePlayer;
         browseSdButton.setEnabled(false);
-        browseSdButton.setText("Searching recordings…");
+        browseSdButton.setText(tr("Searching recordings…"));
         showSdSearchProgress();
-        playButton.setText("Resume video");
+        playButton.setText(tr("Resume video"));
         // Release the live stream while the SDK asks the camera for its SD-card index.
         if (playing && livePlayer != null) {
             try { livePlayer.stopRealPlay(); } catch (Exception ignored) { }
             playing = false;
         }
         String dayLabel = recordingDayLabel(sdSearchDate);
-        state.setText("Searching SD card recordings for " + dayLabel + "…");
+        state.setText(tr("Searching SD card recordings for {0}…", dayLabel));
         Calendar queryFrom = (Calendar) sdSearchDate.clone();
         Calendar dayEnd = (Calendar) sdSearchDate.clone();
         dayEnd.add(Calendar.DAY_OF_MONTH, 1);
@@ -828,29 +834,29 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             } catch (BaseException e) {
                 String message;
                 if (e.getErrorCode() == 120008) {
-                    message = "The camera did not answer the SD recording search (timeout 120008). Make sure it is awake and online, then retry.";
+                    message = tr("The camera did not answer the SD recording search (timeout 120008). Make sure it is awake and online, then retry.");
                 } else if (e.getErrorCode() == 110001) {
-                    message = "EZVIZ rejected the SD recording search parameters (110001). Check the camera's date and time settings, then try another date.";
+                    message = tr("EZVIZ rejected the SD recording search parameters (110001). Check the camera's date and time settings, then try another date.");
                 } else {
-                    message = "Recording search failed (EZVIZ error " + e.getErrorCode() + ").";
+                    message = tr("Recording search failed (EZVIZ error {0}).", e.getErrorCode());
                 }
                 main.post(() -> {
                     main.removeCallbacks(sdSearchTimeout);
                     dismissSdSearchProgress();
                     resetSdSearchButton();
                     state.setText(message);
-                    new AlertDialog.Builder(this).setTitle("SD card search failed")
+                    new AlertDialog.Builder(this).setTitle(tr("SD card search failed"))
                             .setMessage(message).setPositiveButton("OK", null).show();
                     startLive();
                 });
             } catch (Exception e) {
-                String message = "Recording search failed: " + e.getMessage();
+                String message = tr("Recording search failed: {0}", e.getMessage());
                 main.post(() -> {
                     main.removeCallbacks(sdSearchTimeout);
                     dismissSdSearchProgress();
                     resetSdSearchButton();
                     state.setText(message);
-                    new AlertDialog.Builder(this).setTitle("SD card search failed")
+                    new AlertDialog.Builder(this).setTitle(tr("SD card search failed"))
                             .setMessage(message).setPositiveButton("OK", null).show();
                     startLive();
                 });
@@ -864,11 +870,11 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         box.setGravity(Gravity.CENTER_VERTICAL);
         box.setPadding(dp(22), dp(18), dp(22), dp(18));
         box.addView(spinner, new LinearLayout.LayoutParams(dp(32), dp(32)));
-        TextView message = text("Contacting camera…", 15, MUTED, false);
+        TextView message = text(tr("Contacting camera…"), 15, MUTED, false);
         LinearLayout.LayoutParams messageParams = new LinearLayout.LayoutParams(0, -2, 1f);
-        messageParams.leftMargin = dp(16);
+        messageParams.setMarginStart(dp(16));
         box.addView(message, messageParams);
-        sdSearchDialog = new AlertDialog.Builder(this).setTitle("SD card recordings")
+        sdSearchDialog = new AlertDialog.Builder(this).setTitle(tr("SD card recordings"))
                 .setView(box).create();
         sdSearchDialog.setCancelable(false);
         sdSearchDialog.show();
@@ -885,18 +891,18 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
     private void resetSdSearchButton() {
         if (browseSdButton != null) {
             browseSdButton.setEnabled(true);
-            browseSdButton.setText("Browse SD card recordings");
+            browseSdButton.setText(tr("Browse SD card recordings"));
         }
     }
 
     private void showRecordings(List<EZDeviceRecordFile> files) {
         if (files == null || files.isEmpty()) {
             String dayLabel = recordingDayLabel(sdSearchDate);
-            state.setText("No SD card recordings found for " + dayLabel + ".");
-            new AlertDialog.Builder(this).setTitle("No recordings found")
-                    .setMessage("The camera has no SD card recordings for " + dayLabel + ".")
-                    .setNegativeButton("Done", null)
-                    .setPositiveButton("Choose another date", (dialog, which) -> showRecordingDatePicker(null)).show();
+            state.setText(tr("No SD card recordings found for {0}.", dayLabel));
+            new AlertDialog.Builder(this).setTitle(tr("No recordings found"))
+                    .setMessage(tr("The camera has no SD card recordings for {0}.", dayLabel))
+                    .setNegativeButton(tr("Done"), null)
+                    .setPositiveButton(tr("Choose another date"), (dialog, which) -> showRecordingDatePicker(null)).show();
             startLive();
             return;
         }
@@ -905,14 +911,14 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 right.getStartTime() == null ? 0L : right.getStartTime().getTimeInMillis(),
                 left.getStartTime() == null ? 0L : left.getStartTime().getTimeInMillis()));
         thumbnailViews.clear();
-        DateFormat day = new SimpleDateFormat("MMM d", Locale.getDefault());
-        DateFormat time = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        DateFormat day = I18n.dateFormat("MMMd");
+        DateFormat time = new SimpleDateFormat("HH:mm", I18n.locale());
         final AlertDialog[] dialogRef = new AlertDialog[1];
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(18), dp(10), dp(18), dp(16));
         content.setBackgroundColor(BG);
-        TextView heading = text("SD card", 22, Color.WHITE, true);
+        TextView heading = text(tr("SD card"), 22, Color.WHITE, true);
         content.addView(heading);
         LinearLayout filterRow = new LinearLayout(this);
         filterRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -924,7 +930,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         filterRow.addView(dateButton, new LinearLayout.LayoutParams(-2, dp(40)));
         content.addView(filterRow, top(3));
         autoplayNextCheckBox = new CheckBox(this);
-        autoplayNextCheckBox.setText("Autoplay newer recordings");
+        autoplayNextCheckBox.setText(tr("Autoplay newer recordings"));
         autoplayNextCheckBox.setTextColor(MUTED);
         autoplayNextCheckBox.setTextSize(13);
         autoplayNextCheckBox.setButtonTintList(android.content.res.ColorStateList.valueOf(ACCENT));
@@ -964,7 +970,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             TextView title = text(range, 15, Color.WHITE, true);
             info.addView(title);
             long seconds = Math.max(0, (file.getStopTime().getTimeInMillis() - file.getStartTime().getTimeInMillis()) / 1000);
-            TextView sub = text(String.format(Locale.getDefault(), "%d min %02d sec  ·  SD card", seconds / 60, seconds % 60), 12, MUTED, false);
+            TextView sub = text(tr("{0} min {1} sec", seconds / 60, String.format(Locale.US, "%02d", seconds % 60)) + "  ·  " + tr("SD card"), 12, MUTED, false);
             info.addView(sub, top(4));
             row.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
             TextView arrow = text("▶", 16, ACCENT, true);
@@ -984,7 +990,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, listHeight);
         scrollParams.topMargin = dp(12);
         content.addView(listScroll, scrollParams);
-        AlertDialog dialog = new AlertDialog.Builder(this).setView(content).setNegativeButton("Done", null).create();
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(content).setNegativeButton(tr("Done"), null).create();
         dialogRef[0] = dialog;
         recordingsDialog = dialog;
         dialog.setOnDismissListener(ignored -> {
@@ -994,7 +1000,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         dialog.show();
         dialog.getWindow().setBackgroundDrawable(rounded(BG, 22));
         dialog.getWindow().setLayout(Math.min(getResources().getDisplayMetrics().widthPixels - dp(32), dp(520)), -2);
-        state.setText(recordingsCountLabel(sdFiles.size()) + " found · newest first");
+        state.setText(tr("{0} found · newest first", recordingsCountLabel(sdFiles.size())));
         startThumbnailGeneration();
     }
 
@@ -1013,7 +1019,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             searchRecordingsForDate(selected);
         }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH));
         picker.getDatePicker().setMaxDate(System.currentTimeMillis());
-        picker.setTitle("Choose recording date");
+        picker.setTitle(tr("Choose recording date"));
         picker.show();
     }
 
@@ -1022,7 +1028,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         boolean isToday = date.get(Calendar.ERA) == today.get(Calendar.ERA)
                 && date.get(Calendar.YEAR) == today.get(Calendar.YEAR)
                 && date.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR);
-        return isToday ? "Today" : new SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(date.getTime());
+        return isToday ? tr("Today") : I18n.dateFormat("yMMMd").format(date.getTime());
     }
 
     private String recordingDateButtonLabel(Calendar date) {
@@ -1030,7 +1036,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
     }
 
     private String recordingsCountLabel(int count) {
-        return count + (count == 1 ? " recording" : " recordings");
+        return count == 1 ? tr("1 recording") : tr("{0} recordings", count);
     }
 
     private void startThumbnailGeneration() {
@@ -1046,7 +1052,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         thumbnailScanActive = true;
         main.removeCallbacks(firstFrameTimeout);
         if (recordingsHint != null) {
-            recordingsHint.setText(recordingsCountLabel(sdFiles.size()) + " · preparing previews 0/" + thumbnailScanQueue.size());
+            recordingsHint.setText(tr("{0} · preparing previews {1}/{2}", recordingsCountLabel(sdFiles.size()), 0, thumbnailScanQueue.size()));
         }
         playNextThumbnailForScan();
     }
@@ -1078,8 +1084,8 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             main.removeCallbacks(thumbnailScanCaptureTimeout);
             main.postDelayed(thumbnailScanCaptureTimeout, 8000);
             if (recordingsHint != null) {
-                recordingsHint.setText(recordingsCountLabel(sdFiles.size()) + " · preparing previews "
-                        + (thumbnailScanIndex + 1) + "/" + thumbnailScanQueue.size());
+                recordingsHint.setText(tr("{0} · preparing previews {1}/{2}", recordingsCountLabel(sdFiles.size()),
+                        thumbnailScanIndex + 1, thumbnailScanQueue.size()));
             }
         } catch (Exception ignored) {
             finishThumbnailScanItem();
@@ -1143,7 +1149,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             else if (playbackMode) playbackPlayer.stopPlayback();
             player = playbackPlayer;
             boolean started = playbackPlayer.startPlayback(file);
-            if (!started) { state.setText("EZVIZ could not start this SD card recording. Try another clip."); startLive(); return; }
+            if (!started) { state.setText(tr("EZVIZ could not start this SD card recording. Try another clip.")); startLive(); return; }
             playbackMode = true;
             autoAdvanceTriggered = false;
             qualityButton.setVisibility(View.GONE);
@@ -1159,9 +1165,9 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             main.removeCallbacks(playbackTicker);
             main.post(playbackTicker);
             enlargePlaybackView();
-            playButton.setText("Return to live view");
-            state.setText("Playing SD card recording");
-        } catch (Exception e) { state.setText("Could not play recording: " + e.getMessage()); }
+            playButton.setText(tr("Return to live view"));
+            state.setText(tr("Playing SD card recording"));
+        } catch (Exception e) { state.setText(tr("Could not play recording: {0}", e.getMessage())); }
     }
 
     private void playNextNewerRecording() {
@@ -1171,7 +1177,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             playRecording(sdFiles.get(nextIndex));
         } else {
             main.removeCallbacks(playbackTicker);
-            state.setText("End of the latest recording.");
+            state.setText(tr("End of the latest recording."));
         }
     }
 
@@ -1179,7 +1185,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         long eventAt = alarmPlaybackAt;
         alarmPlaybackAt = -1;
         selectedSdIndex = -1;
-        state.setText("Finding the recording for this motion alert…");
+        state.setText(tr("Finding the recording for this motion alert…"));
         Calendar from = Calendar.getInstance(); from.setTimeInMillis(eventAt - Math.max(60000L, alarmPreTime * 1000L));
         Calendar to = Calendar.getInstance(); to.setTimeInMillis(eventAt + 180000L);
         worker.execute(() -> {
@@ -1197,12 +1203,12 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                 }
                 EZDeviceRecordFile result = match;
                 main.post(() -> {
-                    if (result == null) { state.setText("No SD recording was found for this alert. The snapshot is shown in the alert list when available."); return; }
+                    if (result == null) { state.setText(tr("No SD recording was found for this alert. The snapshot is shown in the alert list when available.")); return; }
                     pendingPlaybackSeekAt = eventAt;
                     playRecording(result);
                 });
-            } catch (BaseException e) { main.post(() -> state.setText("Could not open this alert recording (EZVIZ error " + e.getErrorCode() + ").")); }
-            catch (Exception e) { main.post(() -> state.setText("Could not open this alert recording. Check the camera connection.")); }
+            } catch (BaseException e) { main.post(() -> state.setText(tr("Could not open this alert recording (EZVIZ error {0}).", e.getErrorCode()))); }
+            catch (Exception e) { main.post(() -> state.setText(tr("Could not open this alert recording. Check the camera connection."))); }
         });
     }
 
@@ -1220,7 +1226,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
         Calendar start = playbackStart(), end = playbackEnd();
         if (now == null || start == null || end == null) return;
         now.setTimeInMillis(Math.max(start.getTimeInMillis(), Math.min(end.getTimeInMillis(), now.getTimeInMillis() + offset)));
-        if (playbackPlayer.seekPlayback(now)) state.setText("Playing recording · " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(now.getTime()));
+        if (playbackPlayer.seekPlayback(now)) state.setText(tr("Playing recording · {0}", new SimpleDateFormat("HH:mm:ss", I18n.locale()).format(now.getTime())));
     }
 
     private void seekPlaybackTo(int progress) {
@@ -1424,7 +1430,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             }
             videoFrame.getLayoutParams().height = fullscreenVideoHeight();
             videoFrame.requestLayout();
-            fullscreenButton.setText("Exit full screen");
+            fullscreenButton.setText(tr("Exit full screen"));
             decor.setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                     | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
@@ -1443,7 +1449,7 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             videoFrame.getLayoutParams().height = playbackMode
                     ? (playbackViewHeight > 0 ? playbackViewHeight : previewHeight) : previewHeight;
             videoFrame.requestLayout();
-            fullscreenButton.setText("Full screen");
+            fullscreenButton.setText(tr("Full screen"));
             decor.setSystemUiVisibility(fullscreenSavedSystemUi);
             screenScroll.requestApplyInsets();
         }
@@ -1554,18 +1560,18 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
     }
 
     private String qualityName(int level) {
-        if (level == 0) return "Fluent";
-        if (level == 1) return "Balanced";
-        return "HD";
+        if (level == 0) return tr("Fluent");
+        if (level == 1) return tr("Balanced");
+        return tr("HD");
     }
 
     private void showVideoQualityMenu() {
         if (playbackMode) {
-            Toast.makeText(this, "Video quality can be changed in live view", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("Video quality can be changed in live view"), Toast.LENGTH_SHORT).show();
             return;
         }
         PopupMenu menu = new PopupMenu(this, qualityButton);
-        String[] names = {"Fluent", "Balanced", "HD"};
+        String[] names = {tr("Fluent"), tr("Balanced"), tr("HD")};
         for (int level = 0; level < names.length; level++) {
             menu.getMenu().add(0, level, level, names[level]).setCheckable(true)
                     .setChecked(level == videoQuality);
@@ -1579,23 +1585,23 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
 
     private void toggleLiveAudio() {
         if (playbackMode || livePlayer == null) {
-            Toast.makeText(this, "Audio output is available during live view", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("Audio output is available during live view"), Toast.LENGTH_SHORT).show();
             return;
         }
         liveAudioEnabled = !liveAudioEnabled;
         boolean applied = liveAudioEnabled ? livePlayer.openSound() : livePlayer.closeSound();
         if (!applied) {
             liveAudioEnabled = !liveAudioEnabled;
-            Toast.makeText(this, "Could not change live audio", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("Could not change live audio"), Toast.LENGTH_SHORT).show();
             return;
         }
-        audioButton.setText(liveAudioEnabled ? "Audio on" : "Audio off");
+        audioButton.setText(liveAudioEnabled ? tr("Audio on") : tr("Audio off"));
     }
 
     private void applyVideoQuality(int level) {
         if (level < 0 || level > 2 || level == videoQuality) return;
         if (talking) {
-            Toast.makeText(this, "End two-way talk before changing quality", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, tr("End two-way talk before changing quality"), Toast.LENGTH_SHORT).show();
             return;
         }
         boolean resumeLive = playing && livePlayer != null;
@@ -1604,14 +1610,14 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
             playing = false;
         }
         qualityButton.setEnabled(false);
-        state.setText("Changing video quality to " + qualityName(level) + "…");
+        state.setText(tr("Changing video quality to {0}…", qualityName(level)));
         worker.execute(() -> {
             boolean success = false;
-            String failure = "The camera could not change video quality.";
+            String failure = tr("The camera could not change video quality.");
             try {
                 success = EZGlobalSDK.getInstance().setVideoLevel(serial, cameraNo, level);
             } catch (BaseException e) {
-                failure = "Could not change video quality (EZVIZ error " + e.getErrorCode() + ").";
+                failure = tr("Could not change video quality (EZVIZ error {0}).", e.getErrorCode());
             } catch (Exception ignored) { }
             boolean result = success;
             String error = failure;
@@ -1622,8 +1628,8 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
                     videoQuality = level;
                     getSharedPreferences("liza_settings", MODE_PRIVATE).edit()
                             .putInt("quality_" + serial, level).apply();
-                    qualityButton.setText("Quality · " + qualityName(level));
-                    state.setText("Video quality · " + qualityName(level));
+                    qualityButton.setText(tr("Quality · {0}", qualityName(level)));
+                    state.setText(tr("Video quality · {0}", qualityName(level)));
                 } else state.setText(error);
                 if (resumeLive) startLive();
             });
@@ -1632,16 +1638,16 @@ public final class LiveActivity extends Activity implements TextureView.SurfaceT
 
     private EZPlayer createPlayer() {
         EZPlayer created = EZGlobalSDK.getInstance().createPlayer(serial, cameraNo);
-        if (created == null) throw new IllegalStateException("EZVIZ could not create a player");
+        if (created == null) throw new IllegalStateException(tr("EZVIZ could not create a player"));
         created.setHandler(playerHandler);
         if (surface.getSurfaceTexture() == null || !created.setSurfaceEx(surface.getSurfaceTexture()))
-            throw new IllegalStateException("Could not attach the video display");
+            throw new IllegalStateException(tr("Could not attach the video display"));
         String verifyCode = new SecureVault(this).get("verify_" + serial);
         if (verifyCode != null) created.setPlayVerifyCode(verifyCode);
         return created;
     }
     private TextView text(String value, int size, int color, boolean bold) {
-        TextView v = new TextView(this); v.setText(value); v.setTextSize(size); v.setTextColor(color);
+        TextView v = new TextView(this); v.setTextAlignment(android.view.View.TEXT_ALIGNMENT_VIEW_START); v.setText(value); v.setTextSize(size); v.setTextColor(color);
         if (bold) v.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return v;
     }
     private Button button(String value, int fill, int color) {

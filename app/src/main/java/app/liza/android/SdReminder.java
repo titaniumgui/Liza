@@ -1,5 +1,7 @@
 package app.liza.android;
 
+import static app.liza.android.I18n.tr;
+
 import android.Manifest;
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -84,7 +86,7 @@ final class SdReminder {
 
     static String label(String iso) {
         Calendar d = parse(iso);
-        return d == null ? "—" : DateFormat.getDateInstance(DateFormat.MEDIUM).format(d.getTime());
+        return d == null ? "—" : I18n.dateFormat("yMMMd").format(d.getTime());
     }
 
     static Calendar plusDays(Calendar day, int days) { Calendar d = (Calendar) day.clone(); d.add(Calendar.DAY_OF_MONTH, days); return d; }
@@ -142,17 +144,18 @@ final class SdReminder {
         if (nm == null) return;
         prefs(c).edit().putString("notified_" + sn, check).apply();
         if (Build.VERSION.SDK_INT >= 26) {
-            nm.createNotificationChannel(new NotificationChannel(CHANNEL, "SD card reminders", NotificationManager.IMPORTANCE_DEFAULT));
+            nm.createNotificationChannel(new NotificationChannel(CHANNEL, tr("SD card reminders"), NotificationManager.IMPORTANCE_DEFAULT));
         }
         String name = prefs(c).getString("name_" + sn, null);
-        String text = "It was emptied on " + label(start(c, sn))
-                + (full(c, sn) != null ? " and is estimated to fill around " + label(full(c, sn)) + "." : ".")
-                + " Open Liza > Device settings to check it.";
+        String text = (full(c, sn) != null
+                ? tr("It was emptied on {0} and is estimated to fill around {1}.", label(start(c, sn)), label(full(c, sn)))
+                : tr("It was emptied on {0}.", label(start(c, sn))))
+                + " " + tr("Open Liza > Device settings to check it.");
         Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent tap = PendingIntent.getActivity(c, sn.hashCode(), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CHANNEL) : new Notification.Builder(c);
         b.setSmallIcon(android.R.drawable.stat_notify_sdcard)
-                .setContentTitle("Check the SD card in " + (name == null || name.isEmpty() ? "your camera" : name))
+                .setContentTitle(tr("Check the SD card in {0}", name == null || name.isEmpty() ? tr("your camera") : name))
                 .setContentText(text)
                 .setStyle(new Notification.BigTextStyle().bigText(text))
                 .setContentIntent(tap)

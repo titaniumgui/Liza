@@ -38,6 +38,7 @@ Alerts are visible only by opening **Recent motion alerts**. The public EZVIZ SD
 - The colour constants and view helpers (`text`, `button`, `rounded`, `dp`) are copied into every activity.
 - `okhttp 3.12.1` and `gson 2.8.5` are old versions pinned to match the EZVIZ SDK. Check before upgrading.
 - R8 code shrinking is off (the EZVIZ SDK uses reflection and JNI). Releases from 0.4.0 are signed. 0.3.0 was debug-signed, so updating from it needs an uninstall first.
+- The Arabic translation was written with AI assistance and checked on screen, but not reviewed by a professional translator. Corrections are welcome in `web/public/i18n/ar.json` and `app/src/main/res/raw/ar.json`.
 - The SD card reminder can't read free space (EZVIZ doesn't report it). Until the card has filled once, or you enter how long a full card lasts, it suggests a check after 30 days.
 - There is a `gradlew.bat` but no `gradlew` shell script for macOS and Linux.
 

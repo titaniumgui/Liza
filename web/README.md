@@ -16,6 +16,7 @@ The computer version of Liza: a fast, private web app for your EZVIZ camera. It 
 - **SD card recordings** by date, with thumbnails, ±10 s, and autoplay of newer clips
 - **Motion alerts** from the last 24 hours with snapshots; click one to play its recording
 - **Device settings**: rename, arm/disarm, SD card status, 180° image flip
+- **English and Arabic** (العربية): a language window on first run, a right-to-left layout in Arabic, and a switch in **About** and on the setup screens
 - **SD card reminder**: detects when the card is full and overwriting, learns how many days a full card lasts, and reminds you before the next one fills (in Liza and as a calendar file)
 - **Stall guard**: if live video stops advancing for 6 seconds, Liza saves any recording in progress and reconnects
 
@@ -31,7 +32,7 @@ The computer version of Liza: a fast, private web app for your EZVIZ camera. It 
 
 ## Quick start
 
-Download **Liza-web-1.1.0.zip** from the [Liza web release](https://github.com/titaniumgui/Liza/releases/tag/web-v1.1.0) and unzip it, or clone this repository.
+Download **Liza-web-1.2.0.zip** from the [Liza web release](https://github.com/titaniumgui/Liza/releases/tag/web-v1.2.0) and unzip it, or clone this repository.
 
 **Windows:** double-click **`Start Liza.bat`** in the `web` folder.
 
@@ -47,7 +48,9 @@ python server.py       # then open http://localhost:8790
 
 ## First run
 
-Liza opens **Connect to EZVIZ**:
+Liza first asks for your language (English or العربية). You can change it later in **About**, or with the language link on the setup and sign-in screens. The choice is stored in this browser.
+
+Then it opens **Connect to EZVIZ**:
 
 <img src="../docs/screenshots/web-05-setup.png" width="420" alt="Connect to EZVIZ setup screen with AppKey, AppSecret and region fields">
 
@@ -80,7 +83,8 @@ Liza checks an AppKey/AppSecret pair with EZVIZ before saving it. You can change
 |---|---|
 | `server.py` | Local server: setup, session, a fixed list of EZVIZ API calls, static files |
 | `get_player.py` | Downloads and verifies EZVIZ's web player into `vendor/` |
-| `public/` | The app: `index.html`, `app.js`, `app.css` |
+| `public/` | The app: `index.html`, `app.js`, `app.css`, `i18n.js` (translation layer) |
+| `public/i18n/ar.json` | Arabic translations, keyed by the English text |
 | `config.example.json` | Template for `config.json` (created by the setup screen) |
 | `Start Liza.bat` | Windows launcher |
 
