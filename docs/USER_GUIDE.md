@@ -26,8 +26,22 @@ You need:
 |---|---|
 | An Android phone with an ARM processor | Android 6.0 (API 23) or newer. The EZVIZ SDK ships native libraries for `armeabi-v7a` and `arm64-v8a` only. |
 | An EZVIZ account | The same account your camera is registered to in the official EZVIZ app. |
-| An EZVIZ Open Platform **AppKey** | Create one in the EZVIZ Open Platform developer console. Liza does not include an AppKey; each user supplies their own. |
+| An EZVIZ Open Platform **AppKey** | Free from the EZVIZ Open Platform console (see below). Liza does not include an AppKey; each user supplies their own. |
 | An EZVIZ camera | Liza was built for the **DP2C** smart door viewer. Other EZVIZ cameras on the same account show up too, but have not been tested. |
+
+### Get your AppKey
+
+1. Sign in to [EZVIZ Open Platform](https://open.ezviz.com), preferably with the EZVIZ account your camera is on.
+2. In the side menu, open **Account Settings → Appkey management**.
+
+   <img src="screenshots/ezviz-console-01-menu.png" width="280" alt="EZVIZ Open Platform menu: Account Settings, then Appkey management">
+
+3. Click **Copy** next to **AppKey**.
+4. For Liza web, you can also click **Copy** next to **Secret** (the AppSecret). Don't click **Reset**: it replaces the Secret and the old one stops working.
+
+   <img src="screenshots/ezviz-console-02-appkey.png" width="700" alt="Appkey management page with AppKey and Secret and their Copy links">
+
+You don't need the **AccessToken** shown on the same page; Liza gets its own session. Keep the AppKey and Secret private. The AppKey value and account name are blurred in this screenshot.
 
 ## Install the APK
 

@@ -38,10 +38,20 @@
 
 ### إنشاء مفتاح AppKey
 
-1. ادخل إلى [EZVIZ Open Platform](https://open.ezviz.com) وأنشئ حساب مطوّر. يُفضّل أن تستخدم حساب EZVIZ نفسه المسجّلة عليه الكاميرا.
-2. أنشئ تطبيقًا (Application) من لوحة التحكم (Console).
-3. انسخ **AppKey**، وانسخ أيضًا **AppSecret** إن كنت ستستخدم نسخة الكمبيوتر (اختياري).
-4. تأكّد من أن **المنطقة** (Region) التي أنشأت فيها المفتاح هي منطقة حسابك نفسها. مفتاح أوروبا مثلًا لا يعمل مع خادم منطقة أخرى.
+1. ادخل إلى [EZVIZ Open Platform](https://open.ezviz.com) وسجّل الدخول. يُفضّل أن تستخدم حساب EZVIZ نفسه المسجّلة عليه الكاميرا.
+2. من القائمة الجانبية افتح **Account Settings**، ثم **Appkey management**.
+
+   <img src="docs/screenshots/ezviz-console-01-menu.png" width="300" alt="قائمة EZVIZ Open Platform: Account Settings ثم Appkey management">
+
+3. بجوار **AppKey** اضغط **Copy** لنسخ المفتاح.
+4. بجوار **Secret** اضغط **Copy** لنسخ AppSecret (اختياري، لنسخة الكمبيوتر فقط). لا تضغط **Reset**، فهو يُلغي المفتاح القديم.
+
+   <img src="docs/screenshots/ezviz-console-02-appkey.png" width="700" alt="صفحة Appkey management وفيها AppKey وSecret مع أزرار Copy">
+
+5. لا تحتاج إلى **AccessToken** الظاهر في الصفحة نفسها؛ ليزا تحصل على الجلسة بنفسها.
+6. تأكّد من أن **المنطقة** (Region) التي تختارها في ليزا هي منطقة حسابك. مفتاح أوروبا مثلًا لا يعمل مع خادم منطقة أخرى.
+
+> في الصورة أُخفيت قيمة AppKey واسم الحساب.
 
 > احتفظ بـ AppKey وAppSecret لنفسك، ولا تنشرهما في أي مكان.
 

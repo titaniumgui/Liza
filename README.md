@@ -65,7 +65,7 @@ On Windows, double-click `web/Start Liza.bat`. See the [Liza web README](web/REA
 
 All versions are on the [**Releases**](../../releases) page.
 
-Requirements for Android: an ARM phone running Android 6.0 or newer, an EZVIZ account, and your own [EZVIZ Open Platform](https://open.ezviz.com) **AppKey**.
+Requirements for Android: an ARM phone running Android 6.0 or newer, an EZVIZ account, and your own [EZVIZ Open Platform](https://open.ezviz.com) **AppKey** (see [Get your AppKey](docs/USER_GUIDE.md#get-your-appkey)).
 
 ## Quick start
 

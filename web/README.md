@@ -30,7 +30,7 @@ The computer version of Liza: a fast, private web app for your EZVIZ camera. It 
 
 - Python 3.10 or newer. No extra packages needed.
 - A desktop browser: Chrome, Edge or Firefox.
-- An EZVIZ account and an **EZVIZ Open Platform AppKey**, created in the Open Platform console for the same region as your account. An **AppSecret** from the same page is optional but recommended.
+- An EZVIZ account and an **EZVIZ Open Platform AppKey**, from **Account Settings → Appkey management** in the Open Platform console (see [Get your AppKey](../docs/USER_GUIDE.md#get-your-appkey)). The **Secret** on the same page (your AppSecret) is optional but recommended.
 
 ## Quick start
 
