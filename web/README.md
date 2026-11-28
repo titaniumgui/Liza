@@ -1,5 +1,7 @@
 # Liza web
 
+> **العربية:** خطوات الإعداد بالعربية في [README.ar.md](../README.ar.md#الإعداد-على-الكمبيوتر-ليزا-ويب).
+
 The computer version of Liza: a fast, private web app for your EZVIZ camera. It runs entirely on your own computer at `http://localhost:8790`. A small Python server keeps your EZVIZ access on that computer, and the page plays video with EZVIZ's official web player (EZUIKit).
 
 <p align="center">

@@ -1,3 +1,5 @@
+<p align="right"><b>English</b> | <a href="README.ar.md">العربية</a></p>
+
 <p align="center">
   <img src="docs/screenshots/05-home-signed-in.png" width="200" alt="Home screen with a connected DP2C">
   &nbsp;
